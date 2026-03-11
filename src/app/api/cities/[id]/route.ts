@@ -14,7 +14,11 @@ export async function GET(
     const city = await db.query.cities.findFirst({
       where: eq(cities.id, id),
       with: {
-        fields: true,
+        fields: {
+          with: {
+            zones: true,
+          },
+        },
       },
     });
 
