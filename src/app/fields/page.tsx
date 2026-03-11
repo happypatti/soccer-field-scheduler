@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building, MapPin, Layers } from "lucide-react";
+import { Building, MapPin, Layers, ArrowRight, Search, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface City {
   id: string;
@@ -22,6 +24,7 @@ interface Field {
   name: string;
   address: string | null;
   description: string | null;
+  imageUrl: string | null;
   isActive: boolean;
   city: City;
   zones: Zone[];
@@ -30,6 +33,7 @@ interface Field {
 export default function FieldsPage() {
   const [fields, setFields] = useState<Field[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchFields = async () => {
@@ -47,18 +51,26 @@ export default function FieldsPage() {
     fetchFields();
   }, []);
 
+  const filteredFields = fields.filter(field => 
+    field.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    field.city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    field.address?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">All Fields</h1>
-          <p className="text-muted-foreground">
-            Browse all available soccer fields
-          </p>
+      <div className="space-y-8">
+        {/* Header Skeleton */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 p-8 md:p-12">
+          <div className="relative z-10">
+            <div className="h-10 w-48 bg-white/20 rounded animate-pulse mb-4"></div>
+            <div className="h-6 w-64 bg-white/20 rounded animate-pulse"></div>
+          </div>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse border-0 shadow-lg overflow-hidden">
+              <div className="h-40 bg-muted"></div>
               <CardHeader>
                 <div className="h-6 w-32 bg-muted rounded"></div>
                 <div className="h-4 w-24 bg-muted rounded mt-2"></div>
@@ -74,57 +86,127 @@ export default function FieldsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">All Fields</h1>
-        <p className="text-muted-foreground">
-          Browse all available soccer fields
-        </p>
+    <div className="space-y-8">
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-8 md:p-12">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOCAxOC04LjA1OSAxOC0xOC04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNCAxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjA1Ii8+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-12 w-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="2" width="20" height="20" rx="2"/>
+                <line x1="12" y1="2" x2="12" y2="22"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">All Fields</h1>
+              <p className="text-teal-100">Browse and book available soccer fields</p>
+            </div>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="relative max-w-md mt-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+              placeholder="Search fields, locations..." 
+              className="pl-12 h-12 bg-white/95 border-0 shadow-lg text-base"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
-      {fields.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No Fields Available</h2>
+      {/* Stats Bar */}
+      <div className="flex flex-wrap gap-4">
+        <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium">
+          {fields.filter(f => f.isActive).length} Open Fields
+        </div>
+        <div className="bg-teal-50 text-teal-700 px-4 py-2 rounded-full text-sm font-medium">
+          {fields.reduce((acc, f) => acc + f.zones.filter(z => z.isActive).length, 0)} Available Zones
+        </div>
+      </div>
+
+      {filteredFields.length === 0 ? (
+        <Card className="p-12 text-center border-0 shadow-lg">
+          <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+            <Building className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">
+            {searchQuery ? "No Matching Fields" : "No Fields Available"}
+          </h2>
           <p className="text-muted-foreground">
-            Check back later for available fields.
+            {searchQuery 
+              ? "Try adjusting your search query" 
+              : "Check back later for available fields."}
           </p>
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {fields.map((field) => (
+          {filteredFields.map((field) => (
             <Link key={field.id} href={`/fields/${field.id}`}>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle>{field.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {field.city.name}
-                      </CardDescription>
+              <Card className="group relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full">
+                {/* Field Image */}
+                <div className="relative h-44 bg-gradient-to-br from-green-100 to-emerald-100 overflow-hidden">
+                  {field.imageUrl ? (
+                    <Image
+                      src={field.imageUrl}
+                      alt={field.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <svg className="h-16 w-16 text-green-300 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                          <rect x="2" y="2" width="20" height="20" rx="2"/>
+                          <line x1="12" y1="2" x2="12" y2="22"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      </div>
                     </div>
-                    <Badge variant={field.isActive ? "default" : "secondary"}>
-                      {field.isActive ? "Open" : "Closed"}
+                  )}
+                  {/* Status Badge */}
+                  <div className="absolute top-3 right-3">
+                    <Badge 
+                      className={field.isActive 
+                        ? "bg-green-500 hover:bg-green-500 text-white shadow-lg" 
+                        : "bg-gray-500 hover:bg-gray-500 text-white shadow-lg"}
+                    >
+                      {field.isActive ? (
+                        <><CheckCircle className="h-3 w-3 mr-1" /> Open</>
+                      ) : "Closed"}
                     </Badge>
                   </div>
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+                
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg group-hover:text-emerald-600 transition-colors line-clamp-1">
+                    {field.name}
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                    <span className="line-clamp-1">{field.city.name}{field.address ? ` • ${field.address}` : ""}</span>
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {field.address && (
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {field.address}
-                    </p>
-                  )}
                   {field.description && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                       {field.description}
                     </p>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {field.zones.filter(z => z.isActive).length} zone{field.zones.filter(z => z.isActive).length !== 1 ? "s" : ""} available
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                      <Layers className="h-3 w-3 mr-1" />
+                      {field.zones.filter(z => z.isActive).length} zone{field.zones.filter(z => z.isActive).length !== 1 ? "s" : ""}
+                    </Badge>
+                    <div className="flex items-center text-sm text-muted-foreground group-hover:text-emerald-600 transition-colors">
+                      Book Now
+                      <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

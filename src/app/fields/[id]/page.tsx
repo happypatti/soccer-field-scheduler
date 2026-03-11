@@ -55,24 +55,44 @@ function InteractiveSatelliteMap({
   const activeZones = zones.filter(z => z.isActive);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
   
-  // Zone positions for John Muir North Practice Field (based on the satellite image)
-  // 3 fields: Field A (top-left), Field B (bottom-left), Field C (bottom-right)
+  // Detect which field layout to use based on the image URL
+  const isOtisField = imageUrl?.includes('otis');
+  
+  // Zone positions depend on the field
   const getZonePosition = (zoneName: string, index: number, total: number) => {
-    // Custom positions mapped to the actual satellite image of John Muir field
-    const zonePositions: Record<string, { left: string; top: string; width: string; height: string }> = {
-      // Field A - Top-left corner
-      'Field A': { left: '5%', top: '5%', width: '40%', height: '40%' },
-      // Field B - Bottom-left corner  
-      'Field B': { left: '5%', top: '55%', width: '40%', height: '40%' },
-      // Field C - Bottom-right corner (same size as Field B)
-      'Field C': { left: '55%', top: '55%', width: '40%', height: '40%' },
-    };
-    
-    if (zonePositions[zoneName]) {
-      return zonePositions[zoneName];
+    // Different layouts for different fields
+    if (isOtisField) {
+      // Otis Stadium layout: top-left, mid-right, bottom-right
+      const otisPositions: Record<string, { left: string; top: string; width: string; height: string }> = {
+        'Field A': { left: '5%', top: '5%', width: '40%', height: '40%' },      // Top-left
+        'Field B': { left: '55%', top: '30%', width: '40%', height: '35%' },    // Mid-right
+        'Field C': { left: '55%', top: '60%', width: '40%', height: '35%' },    // Bottom-right
+      };
+      
+      if (otisPositions[zoneName]) {
+        return otisPositions[zoneName];
+      }
+      
+      // Default Otis layout: top-left, mid-right, bottom-right
+      if (total === 3) {
+        if (index === 0) return { left: '5%', top: '5%', width: '40%', height: '40%' };     // Top-left
+        if (index === 1) return { left: '55%', top: '30%', width: '40%', height: '35%' };   // Mid-right
+        return { left: '55%', top: '60%', width: '40%', height: '35%' };                     // Bottom-right
+      }
     }
     
-    // Default layout for 3 fields: top-left, bottom-left, bottom-right
+    // John Muir field layout (default): top-left, bottom-left, bottom-right
+    const johnMuirPositions: Record<string, { left: string; top: string; width: string; height: string }> = {
+      'Field A': { left: '5%', top: '5%', width: '40%', height: '40%' },      // Top-left
+      'Field B': { left: '5%', top: '55%', width: '40%', height: '40%' },     // Bottom-left
+      'Field C': { left: '55%', top: '55%', width: '40%', height: '40%' },    // Bottom-right
+    };
+    
+    if (johnMuirPositions[zoneName]) {
+      return johnMuirPositions[zoneName];
+    }
+    
+    // Default layout for various zone counts
     if (total === 1) {
       return { left: '5%', top: '5%', width: '40%', height: '40%' };
     }
@@ -82,10 +102,10 @@ function InteractiveSatelliteMap({
         : { left: '5%', top: '55%', width: '40%', height: '40%' };
     }
     if (total === 3) {
-      // Top-left, bottom-left, bottom-right
-      if (index === 0) return { left: '5%', top: '5%', width: '40%', height: '40%' };      // Field A - Top-left
-      if (index === 1) return { left: '5%', top: '55%', width: '40%', height: '40%' };     // Field B - Bottom-left
-      return { left: '55%', top: '55%', width: '40%', height: '40%' };                      // Field C - Bottom-right
+      // Default: top-left, bottom-left, bottom-right
+      if (index === 0) return { left: '5%', top: '5%', width: '40%', height: '40%' };
+      if (index === 1) return { left: '5%', top: '55%', width: '40%', height: '40%' };
+      return { left: '55%', top: '55%', width: '40%', height: '40%' };
     }
     // 4 quadrants fallback
     if (index === 0) return { left: '5%', top: '5%', width: '42%', height: '42%' };
@@ -146,12 +166,6 @@ function InteractiveSatelliteMap({
                 <span className="text-white font-bold text-sm drop-shadow-lg block">
                   {zone.name}
                 </span>
-                {zone.capacity && (
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    <Users className="h-3 w-3 text-white/80" />
-                    <span className="text-white/80 text-xs">{zone.capacity} players</span>
-                  </div>
-                )}
               </div>
               
               {/* Selection indicator */}
@@ -237,20 +251,6 @@ function ZoneSelectionCard({
         <Badge variant={zone.isActive ? "default" : "secondary"}>
           {zone.isActive ? "Available" : "Unavailable"}
         </Badge>
-      </div>
-      <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground ml-6">
-        {zone.capacity && (
-          <div className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            <span>{zone.capacity} players</span>
-          </div>
-        )}
-        {zone.pricePerHour && (
-          <div className="flex items-center gap-1">
-            <DollarSign className="h-4 w-4" />
-            <span>${(zone.pricePerHour / 100).toFixed(2)}/hr</span>
-          </div>
-        )}
       </div>
     </button>
   );
@@ -444,23 +444,7 @@ export default function FieldDetailPage() {
                 <Card className="border-primary bg-primary/5">
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold">{selectedZone.name} selected</p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                          {selectedZone.capacity && (
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {selectedZone.capacity} players
-                            </span>
-                          )}
-                          {selectedZone.pricePerHour && (
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              ${(selectedZone.pricePerHour / 100).toFixed(2)}/hr
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <p className="font-semibold">{selectedZone.name} selected</p>
                       <Button onClick={() => openReservationDialog(selectedZone)}>
                         <Calendar className="h-4 w-4 mr-2" />
                         Book Now

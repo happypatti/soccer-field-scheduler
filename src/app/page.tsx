@@ -1,130 +1,114 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Calendar, Users, Shield } from "lucide-react";
+import { ArrowRight, Zap } from "lucide-react";
 
 export default function Home() {
-  const features = [
-    {
-      icon: MapPin,
-      title: "Multiple Locations",
-      description: "Browse fields across different cities and find the perfect location for your game.",
-    },
-    {
-      icon: Calendar,
-      title: "Easy Scheduling",
-      description: "Book your preferred time slot with just a few clicks. No hassle, no phone calls.",
-    },
-    {
-      icon: Users,
-      title: "Zone Selection",
-      description: "Choose from full field, half field, or specific zones based on your team size.",
-    },
-    {
-      icon: Shield,
-      title: "Secure Reservations",
-      description: "Your reservations are confirmed by admins to ensure smooth operations.",
-    },
-  ];
-
   return (
-    <div className="space-y-16">
+    <div className="space-y-20">
       {/* Hero Section */}
-      <section className="text-center space-y-6 py-12">
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-          Book Your Perfect
-          <span className="text-primary"> Soccer Field</span>
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Find and reserve soccer fields in your city. Easy scheduling, multiple
-          zones, and instant booking confirmations.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link href="/cities">
-            <Button size="lg" className="text-lg px-8">
-              Browse Fields
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="lg" variant="outline" className="text-lg px-8">
-              Get Started
-            </Button>
-          </Link>
+      <section className="relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50/50 to-teal-50/30"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-200/30 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl"></div>
+          {/* Soccer field pattern */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.03]" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <rect x="10" y="10" width="80" height="80" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+            <line x1="50" y1="10" x2="50" y2="90" stroke="currentColor" strokeWidth="0.3"/>
+            <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" strokeWidth="0.3"/>
+          </svg>
+        </div>
+        
+        <div className="text-center space-y-8 py-16 md:py-24">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
+            <Zap className="h-4 w-4" />
+            Internal Field Scheduling System
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">
+            Schedule Your
+            <span className="block bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
+              Soccer Field
+            </span>
+          </h1>
+          
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            The simple way to reserve field time. View availability, select your zone, 
+            and book instantly.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+            <Link href="/cities">
+              <Button size="lg" className="text-lg px-8 h-14 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/25">
+                View Fields
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/reservations">
+              <Button size="lg" variant="outline" className="text-lg px-8 h-14 border-2">
+                My Reservations
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold">Why Choose Us?</h2>
-          <p className="text-muted-foreground">
-            Everything you need to organize your soccer games
-          </p>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feature) => (
-            <Card key={feature.title} className="text-center">
-              <CardHeader>
-                <feature.icon className="h-12 w-12 mx-auto text-primary" />
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
 
       {/* How It Works Section */}
-      <section className="space-y-8">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold">How It Works</h2>
-          <p className="text-muted-foreground">
+      <section className="space-y-12 bg-gradient-to-b from-white to-green-50/50 -mx-4 px-4 py-16 rounded-3xl">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl md:text-4xl font-bold">How It Works</h2>
+          <p className="text-lg text-muted-foreground">
             Book your field in 3 simple steps
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="relative text-center space-y-4">
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-green-500 to-emerald-600 text-white text-3xl font-bold flex items-center justify-center mx-auto shadow-xl shadow-green-500/30">
               1
             </div>
-            <h3 className="text-xl font-semibold">Choose a City</h3>
+            {/* Connector line */}
+            <div className="hidden md:block absolute top-10 left-[60%] w-full h-0.5 bg-gradient-to-r from-green-300 to-transparent"></div>
+            <h3 className="text-xl font-bold pt-2">Choose a Location</h3>
             <p className="text-muted-foreground">
-              Browse through available cities and find fields near you.
+              Browse available fields and select your preferred location.
             </p>
           </div>
-          <div className="text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+          <div className="relative text-center space-y-4">
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-3xl font-bold flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/30">
               2
             </div>
-            <h3 className="text-xl font-semibold">Select a Zone</h3>
+            {/* Connector line */}
+            <div className="hidden md:block absolute top-10 left-[60%] w-full h-0.5 bg-gradient-to-r from-emerald-300 to-transparent"></div>
+            <h3 className="text-xl font-bold pt-2">Select Your Zone</h3>
             <p className="text-muted-foreground">
-              Pick from full field, half field, or specific zones.
+              Click on the interactive map to choose your field zone.
             </p>
           </div>
           <div className="text-center space-y-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-3xl font-bold flex items-center justify-center mx-auto shadow-xl shadow-teal-500/30">
               3
             </div>
-            <h3 className="text-xl font-semibold">Book Your Slot</h3>
+            <h3 className="text-xl font-bold pt-2">Confirm Booking</h3>
             <p className="text-muted-foreground">
-              Choose your date and time, and submit your reservation.
+              Pick your date and time, then submit your reservation.
             </p>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary/5 rounded-2xl p-8 md:p-12 text-center space-y-6">
-        <h2 className="text-3xl font-bold">Ready to Play?</h2>
-        <p className="text-muted-foreground max-w-xl mx-auto">
-          Create an account today and start booking soccer fields in your area.
-          It&apos;s free to sign up!
+      <section className="relative overflow-hidden bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-3xl p-8 md:p-16 text-center space-y-6">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOCAxOC04LjA1OSAxOC0xOC04LjA1OS0xOC0xOC0xOHptMCAzMmMtNy43MzIgMC0xNC02LjI2OC0xNC0xNHM2LjI2OC0xNCAxNC0xNCAxNCA2LjI2OCAxNCAxNC02LjI2OCAxNC0xNCAxNHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjA1Ii8+PC9nPjwvc3ZnPg==')] opacity-30"></div>
+        <h2 className="text-3xl md:text-4xl font-bold text-white relative">Ready to Book?</h2>
+        <p className="text-green-100 max-w-xl mx-auto text-lg relative">
+          Start scheduling your field time now. Quick, easy, and efficient.
         </p>
-        <Link href="/register">
-          <Button size="lg" className="text-lg px-8">
-            Create Free Account
+        <Link href="/cities">
+          <Button size="lg" className="text-lg px-10 h-14 bg-white text-green-700 hover:bg-green-50 shadow-xl relative">
+            Browse Available Fields
+            <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </Link>
       </section>

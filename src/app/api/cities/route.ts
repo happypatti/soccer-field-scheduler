@@ -8,6 +8,9 @@ export async function GET() {
   try {
     const allCities = await db.query.cities.findMany({
       orderBy: (cities, { asc }) => [asc(cities.name)],
+      with: {
+        fields: true,
+      },
     });
 
     return NextResponse.json(allCities);
