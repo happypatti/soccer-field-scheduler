@@ -1,65 +1,133 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MapPin, Calendar, Users, Shield } from "lucide-react";
 
 export default function Home() {
+  const features = [
+    {
+      icon: MapPin,
+      title: "Multiple Locations",
+      description: "Browse fields across different cities and find the perfect location for your game.",
+    },
+    {
+      icon: Calendar,
+      title: "Easy Scheduling",
+      description: "Book your preferred time slot with just a few clicks. No hassle, no phone calls.",
+    },
+    {
+      icon: Users,
+      title: "Zone Selection",
+      description: "Choose from full field, half field, or specific zones based on your team size.",
+    },
+    {
+      icon: Shield,
+      title: "Secure Reservations",
+      description: "Your reservations are confirmed by admins to ensure smooth operations.",
+    },
+  ];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-16">
+      {/* Hero Section */}
+      <section className="text-center space-y-6 py-12">
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+          Book Your Perfect
+          <span className="text-primary"> Soccer Field</span>
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          Find and reserve soccer fields in your city. Easy scheduling, multiple
+          zones, and instant booking confirmations.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Link href="/cities">
+            <Button size="lg" className="text-lg px-8">
+              Browse Fields
+            </Button>
+          </Link>
+          <Link href="/register">
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              Get Started
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-bold">Why Choose Us?</h2>
+          <p className="text-muted-foreground">
+            Everything you need to organize your soccer games
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((feature) => (
+            <Card key={feature.title} className="text-center">
+              <CardHeader>
+                <feature.icon className="h-12 w-12 mx-auto text-primary" />
+                <CardTitle className="text-lg">{feature.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </main>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="space-y-8">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-bold">How It Works</h2>
+          <p className="text-muted-foreground">
+            Book your field in 3 simple steps
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="text-center space-y-4">
+            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+              1
+            </div>
+            <h3 className="text-xl font-semibold">Choose a City</h3>
+            <p className="text-muted-foreground">
+              Browse through available cities and find fields near you.
+            </p>
+          </div>
+          <div className="text-center space-y-4">
+            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+              2
+            </div>
+            <h3 className="text-xl font-semibold">Select a Zone</h3>
+            <p className="text-muted-foreground">
+              Pick from full field, half field, or specific zones.
+            </p>
+          </div>
+          <div className="text-center space-y-4">
+            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary text-2xl font-bold flex items-center justify-center mx-auto">
+              3
+            </div>
+            <h3 className="text-xl font-semibold">Book Your Slot</h3>
+            <p className="text-muted-foreground">
+              Choose your date and time, and submit your reservation.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-primary/5 rounded-2xl p-8 md:p-12 text-center space-y-6">
+        <h2 className="text-3xl font-bold">Ready to Play?</h2>
+        <p className="text-muted-foreground max-w-xl mx-auto">
+          Create an account today and start booking soccer fields in your area.
+          It&apos;s free to sign up!
+        </p>
+        <Link href="/register">
+          <Button size="lg" className="text-lg px-8">
+            Create Free Account
+          </Button>
+        </Link>
+      </section>
     </div>
   );
 }
