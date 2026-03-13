@@ -52,7 +52,9 @@ export default function Navbar() {
     try {
       const res = await fetch("/api/notifications");
       const data = await res.json();
-      setNotifications(Array.isArray(data) ? data.slice(0, 10) : []);
+      // Handle new API structure that returns { notifications: [...], counts: {...} }
+      const notifData = data.notifications || data;
+      setNotifications(Array.isArray(notifData) ? notifData.slice(0, 10) : []);
     } catch (e) { console.error(e); }
   };
 

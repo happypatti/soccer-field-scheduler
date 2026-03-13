@@ -128,12 +128,30 @@ export const fieldIssues = pgTable("field_issues", {
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: varchar("type", { length: 50 }).notNull(), // 'cancellation', 'moved', 'approval', 'denial', 'field_issue'
+  type: varchar("type", { length: 50 }).notNull(), // 'cancellation', 'moved', 'approval', 'denial', 'field_issue', 'announcement', 'message'
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   relatedReservationId: uuid("related_reservation_id").references(() => reservations.id, { onDelete: "set null" }),
   relatedFieldId: uuid("related_field_id").references(() => fields.id, { onDelete: "set null" }),
+  relatedMessageId: uuid("related_message_id"), // Links to messages table
   isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"), // When the notification was read (for read receipts)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Messages table for two-way communication
+export const messages = pgTable("messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id").notNull(), // Groups messages in a conversation
+  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  receiverId: uuid("receiver_id").references(() => users.id, { onDelete: "cascade" }), // null for admin messages (sent to all admins)
+  subject: varchar("subject", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  isFromAdmin: boolean("is_from_admin").notNull().default(false),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"), // Read receipt timestamp
+  relatedReservationId: uuid("related_reservation_id").references(() => reservations.id, { onDelete: "set null" }),
+  parentMessageId: uuid("parent_message_id"), // For threaded replies
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -142,6 +160,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   reservations: many(reservations),
   reportedIssues: many(fieldIssues, { relationName: "reporter" }),
   notifications: many(notifications),
+  sentMessages: many(messages, { relationName: "sender" }),
+  receivedMessages: many(messages, { relationName: "receiver" }),
 }));
 
 export const citiesRelations = relations(cities, ({ many }) => ({
@@ -215,6 +235,23 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+export const messagesRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+    relationName: "sender",
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
+    references: [users.id],
+    relationName: "receiver",
+  }),
+  reservation: one(reservations, {
+    fields: [messages.relatedReservationId],
+    references: [reservations.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -230,3 +267,5 @@ export type FieldIssue = typeof fieldIssues.$inferSelect;
 export type NewFieldIssue = typeof fieldIssues.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
