@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Inbox, Bell, Check, CheckCheck, Calendar, AlertTriangle, Trash2, RefreshCw, ArrowLeft, X } from "lucide-react";
+import { Inbox, Bell, Check, CheckCheck, Calendar, AlertTriangle, Trash2, RefreshCw, ArrowLeft, X, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -124,21 +124,24 @@ export default function NotificationsPage() {
         return <RefreshCw className="h-5 w-5 text-blue-600" />;
       case "field_issue":
         return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
+      case "announcement":
+        return <Megaphone className="h-5 w-5 text-purple-600" />;
       default:
         return <Bell className="h-5 w-5 text-gray-600" />;
     }
   };
 
   const getTypeBadge = (type: string) => {
-    const badges: Record<string, { label: string; variant: "default" | "destructive" | "outline" | "secondary" }> = {
+    const badges: Record<string, { label: string; variant: "default" | "destructive" | "outline" | "secondary"; className?: string }> = {
       approval: { label: "Approved", variant: "default" },
       denial: { label: "Denied", variant: "destructive" },
       cancellation: { label: "Cancelled", variant: "secondary" },
       moved: { label: "Moved", variant: "outline" },
       field_issue: { label: "Issue", variant: "secondary" },
+      announcement: { label: "📢 Announcement", variant: "outline", className: "bg-purple-100 text-purple-800 border-purple-300" },
     };
     const badge = badges[type] || { label: "Alert", variant: "outline" as const };
-    return <Badge variant={badge.variant}>{badge.label}</Badge>;
+    return <Badge variant={badge.variant} className={badge.className}>{badge.label}</Badge>;
   };
 
   const formatDate = (dateStr: string) => {
