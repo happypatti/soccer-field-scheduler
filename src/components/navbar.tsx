@@ -37,6 +37,13 @@ export default function Navbar() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchNotifications();
+      
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 30000);
+      
+      return () => clearInterval(interval);
     }
   }, [session?.user?.id]);
 
