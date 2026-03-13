@@ -9,8 +9,10 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 255 }).notNull(),
   teamName: varchar("team_name", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
-  role: varchar("role", { length: 20 }).notNull().default("user"), // 'user' or 'admin'
-  tier: varchar("tier", { length: 20 }).notNull().default("bronze"), // 'gold', 'silver', 'bronze'
+  // Roles: 'user', 'silver_admin' (first level approver), 'gold_admin' (final approver)
+  role: varchar("role", { length: 20 }).notNull().default("user"),
+  // Coach tiers for field access: 'gold', 'silver', 'bronze'
+  tier: varchar("tier", { length: 20 }).notNull().default("bronze"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -32,6 +34,7 @@ export const fields = pgTable("fields", {
   name: varchar("name", { length: 255 }).notNull(),
   address: text("address"),
   description: text("description"),
+  aboutInfo: text("about_info"), // Rich "About this Field" content
   imageUrl: text("image_url"),
   // Allowed tiers: 'gold', 'gold_silver', 'silver', 'silver_bronze', 'bronze', 'all'
   allowedTiers: varchar("allowed_tiers", { length: 50 }).notNull().default("all"),
@@ -68,7 +71,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Reservations table
+// Reservations table with two-level approval
 export const reservations = pgTable("reservations", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -76,16 +79,56 @@ export const reservations = pgTable("reservations", {
   date: date("date").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'approved', 'denied', 'cancelled'
+  // Status: 'pending' (waiting for silver), 'pending_gold' (silver approved, waiting for gold), 
+  // 'approved' (fully approved), 'denied', 'cancelled'
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
   notes: text("notes"),
+  adminNotes: text("admin_notes"),
+  // Track who approved at each level
+  silverApprovedBy: uuid("silver_approved_by").references(() => users.id),
+  silverApprovedAt: timestamp("silver_approved_at"),
+  goldApprovedBy: uuid("gold_approved_by").references(() => users.id),
+  goldApprovedAt: timestamp("gold_approved_at"),
+  // Track if moved from another reservation
+  movedFromId: uuid("moved_from_id"),
+  movedReason: text("moved_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Field Issues/Alerts table
+export const fieldIssues = pgTable("field_issues", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  fieldId: uuid("field_id").notNull().references(() => fields.id, { onDelete: "cascade" }),
+  reportedBy: uuid("reported_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  issueType: varchar("issue_type", { length: 50 }).notNull().default("other"), // 'lights', 'safety', 'equipment', 'weather', 'other'
+  description: text("description").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("open"), // 'open', 'in_progress', 'resolved'
+  resolvedBy: uuid("resolved_by").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
   adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Notifications table for alerts to coaches
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(), // 'cancellation', 'moved', 'approval', 'denial', 'field_issue'
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  relatedReservationId: uuid("related_reservation_id").references(() => reservations.id, { onDelete: "set null" }),
+  relatedFieldId: uuid("related_field_id").references(() => fields.id, { onDelete: "set null" }),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   reservations: many(reservations),
+  reportedIssues: many(fieldIssues, { relationName: "reporter" }),
+  notifications: many(notifications),
 }));
 
 export const citiesRelations = relations(cities, ({ many }) => ({
@@ -98,6 +141,7 @@ export const fieldsRelations = relations(fields, ({ one, many }) => ({
     references: [cities.id],
   }),
   zones: many(zones),
+  issues: many(fieldIssues),
 }));
 
 export const zonesRelations = relations(zones, ({ one, many }) => ({
@@ -117,6 +161,45 @@ export const reservationsRelations = relations(reservations, ({ one }) => ({
     fields: [reservations.zoneId],
     references: [zones.id],
   }),
+  silverApprover: one(users, {
+    fields: [reservations.silverApprovedBy],
+    references: [users.id],
+  }),
+  goldApprover: one(users, {
+    fields: [reservations.goldApprovedBy],
+    references: [users.id],
+  }),
+}));
+
+export const fieldIssuesRelations = relations(fieldIssues, ({ one }) => ({
+  field: one(fields, {
+    fields: [fieldIssues.fieldId],
+    references: [fields.id],
+  }),
+  reporter: one(users, {
+    fields: [fieldIssues.reportedBy],
+    references: [users.id],
+    relationName: "reporter",
+  }),
+  resolver: one(users, {
+    fields: [fieldIssues.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  reservation: one(reservations, {
+    fields: [notifications.relatedReservationId],
+    references: [reservations.id],
+  }),
+  field: one(fields, {
+    fields: [notifications.relatedFieldId],
+    references: [fields.id],
+  }),
 }));
 
 // Types
@@ -130,3 +213,7 @@ export type Zone = typeof zones.$inferSelect;
 export type NewZone = typeof zones.$inferInsert;
 export type Reservation = typeof reservations.$inferSelect;
 export type NewReservation = typeof reservations.$inferInsert;
+export type FieldIssue = typeof fieldIssues.$inferSelect;
+export type NewFieldIssue = typeof fieldIssues.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;

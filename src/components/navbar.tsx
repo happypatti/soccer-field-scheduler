@@ -12,17 +12,54 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut } from "lucide-react";
-import { useState } from "react";
+import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut, Bell } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+
+interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
 
 export default function Navbar() {
   const { data: session, status } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin = session?.user?.role === "admin" || session?.user?.role === "silver_admin" || session?.user?.role === "gold_admin";
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchNotifications();
+    }
+  }, [session?.user?.id]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      const data = await res.json();
+      setNotifications(Array.isArray(data) ? data.slice(0, 10) : []);
+    } catch (e) { console.error(e); }
+  };
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch("/api/notifications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: id }),
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) { console.error(e); }
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -56,7 +93,7 @@ export default function Navbar() {
               className="drop-shadow-md group-hover:drop-shadow-lg transition-all"
             />
             <div className="hidden sm:block">
-              <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              <span className="text-lg font-bold text-gray-900">
                 LASC
               </span>
               <span className="block text-[10px] text-muted-foreground -mt-1 tracking-wider uppercase">
@@ -73,7 +110,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath(link.href)
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-yellow-100 text-yellow-800"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
@@ -86,7 +123,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActivePath(link.href)
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-yellow-100 text-yellow-800"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
@@ -100,67 +137,107 @@ export default function Navbar() {
             {status === "loading" ? (
               <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
             ) : session ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger className="focus:outline-none">
-                  <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-                    <Avatar className="h-8 w-8 border-2 border-green-200">
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold">
-                        {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="text-left hidden lg:block">
-                      <p className="text-sm font-medium leading-none">{session.user?.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {isAdmin ? "Administrator" : "Member"}
-                      </p>
+              <>
+                {/* Notification Bell */}
+                <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+                  <DropdownMenuTrigger className="relative p-2 rounded-lg hover:bg-muted transition-colors focus:outline-none">
+                    <Bell className="h-5 w-5 text-muted-foreground" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <div className="p-2 border-b">
+                      <p className="font-semibold">Notifications</p>
                     </div>
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 p-2">
-                  <div className="flex items-center gap-3 px-2 py-3 mb-2 bg-muted/50 rounded-lg">
-                    <Avatar className="h-10 w-10 border-2 border-green-200">
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold">
-                        {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                      <p className="font-semibold">{session.user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-muted-foreground text-sm">
+                          No notifications
+                        </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className={`p-3 border-b hover:bg-muted cursor-pointer ${!notif.isRead ? "bg-yellow-50" : ""}`}
+                            onClick={() => markAsRead(notif.id)}
+                          >
+                            <p className="text-sm">{notif.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(notif.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  </div>
-                  <DropdownMenuItem 
-                    onClick={() => router.push("/reservations")}
-                    className="cursor-pointer rounded-lg"
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    My Bookings
-                  </DropdownMenuItem>
-                  {isAdmin && (
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="focus:outline-none">
+                    <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+                      <Avatar className="h-8 w-8 border-2 border-yellow-300">
+                        <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-amber-500 text-black font-semibold">
+                          {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-left hidden lg:block">
+                        <p className="text-sm font-medium leading-none">{session.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {session.user?.role === "gold_admin" ? "Gold Admin" : session.user?.role === "silver_admin" ? "Silver Admin" : isAdmin ? "Administrator" : "Member"}
+                        </p>
+                      </div>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 p-2">
+                    <div className="flex items-center gap-3 px-2 py-3 mb-2 bg-muted/50 rounded-lg">
+                      <Avatar className="h-10 w-10 border-2 border-yellow-300">
+                        <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-amber-500 text-black font-semibold">
+                          {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <p className="font-semibold">{session.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                      </div>
+                    </div>
                     <DropdownMenuItem 
-                      onClick={() => router.push("/admin")}
+                      onClick={() => router.push("/reservations")}
                       className="cursor-pointer rounded-lg"
                     >
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Admin Dashboard
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      My Bookings
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator className="my-2" />
-                  <DropdownMenuItem
-                    className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
-                    onClick={() => signOut()}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {isAdmin && (
+                      <DropdownMenuItem 
+                        onClick={() => router.push("/admin")}
+                        className="cursor-pointer rounded-lg"
+                      >
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                      onClick={() => signOut()}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="ghost" className="text-muted-foreground">Sign In</Button>
                 </Link>
                 <Link href="/register">
-                  <Button className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/20">
+                  <Button className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-black shadow-lg shadow-yellow-500/20">
                     Get Started
                   </Button>
                 </Link>
@@ -190,7 +267,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
                   isActivePath(link.href)
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-yellow-100 text-yellow-800"
                     : "text-muted-foreground hover:bg-muted"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -207,7 +284,7 @@ export default function Navbar() {
                 href={link.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
                   isActivePath(link.href)
-                    ? "bg-green-100 text-green-700"
+                    ? "bg-yellow-100 text-yellow-800"
                     : "text-muted-foreground hover:bg-muted"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -220,16 +297,25 @@ export default function Navbar() {
             <div className="pt-4 mt-4 border-t">
               {session ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    <Avatar className="h-10 w-10 border-2 border-green-200">
-                      <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold">
-                        {session.user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{session.user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 border-2 border-yellow-300">
+                        <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-amber-500 text-black font-semibold">
+                          {session.user?.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{session.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                      </div>
                     </div>
+                    {/* Mobile notification indicator */}
+                    {unreadCount > 0 && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs">
+                        <Bell className="h-3 w-3" />
+                        {unreadCount}
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="outline"
@@ -246,7 +332,7 @@ export default function Navbar() {
                     <Button variant="outline" className="w-full">Sign In</Button>
                   </Link>
                   <Link href="/register" className="flex-1">
-                    <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600">Get Started</Button>
+                    <Button className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 text-black">Get Started</Button>
                   </Link>
                 </div>
               )}

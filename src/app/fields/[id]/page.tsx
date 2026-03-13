@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, MapPin, Users, DollarSign, Calendar, Layers } from "lucide-react";
+import { ArrowLeft, MapPin, Users, DollarSign, Calendar, Layers, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface City {
@@ -280,6 +280,11 @@ export default function FieldDetailPage() {
   });
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  
+  // Field issue reporting
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
+  const [issueData, setIssueData] = useState({ issueType: "", description: "" });
+  const [isSubmittingIssue, setIsSubmittingIssue] = useState(false);
 
   // Available time slots
   const TIME_SLOTS = [
@@ -432,6 +437,41 @@ export default function FieldDetailPage() {
     setIsDialogOpen(true);
   };
 
+  const submitFieldIssue = async () => {
+    if (!session) {
+      toast.error("Please sign in to report an issue");
+      router.push("/login");
+      return;
+    }
+
+    if (!issueData.issueType || !issueData.description.trim()) {
+      toast.error("Please select an issue type and provide a description");
+      return;
+    }
+
+    setIsSubmittingIssue(true);
+    try {
+      const response = await fetch("/api/field-issues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fieldId: field?.id,
+          issueType: issueData.issueType,
+          description: issueData.description,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed");
+      toast.success("Issue reported! Admins will be notified.");
+      setIssueDialogOpen(false);
+      setIssueData({ issueType: "", description: "" });
+    } catch {
+      toast.error("Failed to report issue");
+    } finally {
+      setIsSubmittingIssue(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -486,6 +526,32 @@ export default function FieldDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{field.description}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Report Field Issue */}
+      {session && (
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Notice an issue with this field?</p>
+                  <p className="text-sm text-muted-foreground">Report problems like broken lights, safety hazards, etc.</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                onClick={() => setIssueDialogOpen(true)}
+              >
+                Report Issue
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -567,6 +633,54 @@ export default function FieldDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Report Issue Dialog */}
+      <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Field Issue</DialogTitle>
+            <DialogDescription>
+              Let admins know about any problems with {field.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Issue Type *</Label>
+              <select 
+                className="w-full border rounded-md p-2"
+                value={issueData.issueType}
+                onChange={(e) => setIssueData({ ...issueData, issueType: e.target.value })}
+              >
+                <option value="">Select issue type</option>
+                <option value="lights">Lights not working</option>
+                <option value="safety">Safety hazard</option>
+                <option value="equipment">Broken equipment (goals, nets, etc.)</option>
+                <option value="weather">Weather/Field conditions</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description *</Label>
+              <textarea 
+                className="w-full border rounded-md p-2 min-h-[100px]"
+                value={issueData.description}
+                onChange={(e) => setIssueData({ ...issueData, description: e.target.value })}
+                placeholder="Please describe the issue in detail..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIssueDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={submitFieldIssue} 
+              disabled={isSubmittingIssue || !issueData.issueType || !issueData.description.trim()}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {isSubmittingIssue ? "Submitting..." : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reservation Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

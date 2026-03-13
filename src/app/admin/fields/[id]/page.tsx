@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Upload, Save, Plus, Trash2, Move, Crown, Medal, Award } from "lucide-react";
+import { ArrowLeft, Upload, Save, Plus, Trash2, Move } from "lucide-react";
 import { toast } from "sonner";
 
 interface Zone {
@@ -26,8 +26,11 @@ interface Field {
   id: string;
   name: string;
   address: string | null;
+  description: string | null;
+  aboutInfo: string | null;
   imageUrl: string | null;
   allowedTiers: string;
+  isActive: boolean;
   zones: Zone[];
 }
 
@@ -53,6 +56,14 @@ export default function AdminFieldEditPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
+  // Editable field details
+  const [fieldName, setFieldName] = useState("");
+  const [fieldAddress, setFieldAddress] = useState("");
+  const [fieldDescription, setFieldDescription] = useState("");
+  const [fieldAboutInfo, setFieldAboutInfo] = useState("");
+  const [selectedTier, setSelectedTier] = useState("all");
+  const [isActive, setIsActive] = useState(true);
+  
   // Zone being dragged/resized
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -63,27 +74,34 @@ export default function AdminFieldEditPage() {
   const [newZoneName, setNewZoneName] = useState("");
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [isDeletingZone, setIsDeletingZone] = useState<string | null>(null);
-  
-  // Field tier
-  const [selectedTier, setSelectedTier] = useState("bronze");
+
+  const isAdmin = session?.user?.role === "admin" || session?.user?.role === "silver_admin" || session?.user?.role === "gold_admin";
 
   useEffect(() => {
     if (status === "loading") return;
     
-    if (!session || session.user.role !== "admin") {
+    if (!session || !isAdmin) {
       toast.error("Access denied. Admin only.");
       router.push("/");
       return;
     }
 
     fetchField();
-  }, [session, status, router, params.id]);
+  }, [session, status, router, params.id, isAdmin]);
 
   const fetchField = async () => {
     try {
       const response = await fetch(`/api/fields/${params.id}`);
       const data = await response.json();
       setField(data);
+      
+      // Set editable field values
+      setFieldName(data.name || "");
+      setFieldAddress(data.address || "");
+      setFieldDescription(data.description || "");
+      setFieldAboutInfo(data.aboutInfo || "");
+      setSelectedTier(data.allowedTiers || "all");
+      setIsActive(data.isActive !== false);
       
       // Initialize zone edits with current positions
       const edits: Record<string, { left: number; top: number; width: number; height: number }> = {};
@@ -96,7 +114,6 @@ export default function AdminFieldEditPage() {
         };
       });
       setZoneEdits(edits);
-      setSelectedTier(data.allowedTiers || "all");
       
       if (data.imageUrl) {
         setImagePreview(data.imageUrl);
@@ -124,8 +141,6 @@ export default function AdminFieldEditPage() {
   const handleImageUpload = async () => {
     if (!imageFile) return null;
     
-    // For now, convert to base64 and store directly (simple approach)
-    // In production, you'd upload to S3/Cloudinary/etc.
     return new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -146,11 +161,19 @@ export default function AdminFieldEditPage() {
         imageUrl = await handleImageUpload();
       }
       
-      // Update field with new image and allowedTiers
+      // Update field with all details
       const fieldResponse = await fetch(`/api/fields/${field.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl, allowedTiers: selectedTier }),
+        body: JSON.stringify({ 
+          name: fieldName,
+          address: fieldAddress,
+          description: fieldDescription,
+          aboutInfo: fieldAboutInfo,
+          imageUrl, 
+          allowedTiers: selectedTier,
+          isActive,
+        }),
       });
       
       if (!fieldResponse.ok) {
@@ -259,24 +282,14 @@ export default function AdminFieldEditPage() {
   };
 
   const deleteZone = async (zoneId: string) => {
-    if (!confirm("Are you sure you want to delete this zone? This cannot be undone.")) {
-      return;
-    }
+    if (!confirm("Are you sure you want to delete this zone?")) return;
     
     setIsDeletingZone(zoneId);
     try {
-      const response = await fetch(`/api/zones/${zoneId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete zone");
-      }
-
+      const response = await fetch(`/api/zones/${zoneId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete zone");
       toast.success("Zone deleted!");
-      if (selectedZone === zoneId) {
-        setSelectedZone(null);
-      }
+      if (selectedZone === zoneId) setSelectedZone(null);
       fetchField();
     } catch (error) {
       console.error("Error deleting zone:", error);
@@ -301,8 +314,8 @@ export default function AdminFieldEditPage() {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold">Field not found</h1>
-        <Link href="/admin">
-          <Button className="mt-4">Back to Admin</Button>
+        <Link href="/admin/all-fields">
+          <Button className="mt-4">Back to Fields</Button>
         </Link>
       </div>
     );
@@ -311,16 +324,14 @@ export default function AdminFieldEditPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/admin">
+        <Link href="/admin/all-fields">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold">Edit Field: {field.name}</h1>
-          <p className="text-muted-foreground">
-            Upload field image and position zone overlays
-          </p>
+          <h1 className="text-2xl font-bold">Edit Field</h1>
+          <p className="text-muted-foreground">Update field details and zone positions</p>
         </div>
         <Button onClick={saveField} disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
@@ -329,13 +340,60 @@ export default function AdminFieldEditPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Image Upload & Zone Editor */}
+        {/* Field Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Field Image & Zone Layout</CardTitle>
+            <CardTitle>Field Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Field Access Tier Selection */}
+            <div className="space-y-2">
+              <Label>Field Name *</Label>
+              <Input
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+                placeholder="Soccer Field Name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                value={fieldAddress}
+                onChange={(e) => setFieldAddress(e.target.value)}
+                placeholder="123 Main St, City, State"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Short Description</Label>
+              <Input
+                value={fieldDescription}
+                onChange={(e) => setFieldDescription(e.target.value)}
+                placeholder="Brief description"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>About This Field (detailed)</Label>
+              <textarea
+                className="w-full border rounded-md p-2 min-h-[100px]"
+                value={fieldAboutInfo}
+                onChange={(e) => setFieldAboutInfo(e.target.value)}
+                placeholder="Detailed information about amenities, parking, rules..."
+              />
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="isActive">Field is Active (visible to coaches)</Label>
+            </div>
+
             <div className="space-y-2">
               <Label>Who can book this field?</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -356,54 +414,37 @@ export default function AdminFieldEditPage() {
                 ))}
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Image Upload */}
-            <div className="space-y-2">
-              <Label>Field Satellite/Aerial Image</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Image
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-                {imageFile && (
-                  <span className="text-sm text-muted-foreground self-center">
-                    {imageFile.name}
-                  </span>
-                )}
-              </div>
+        {/* Image & Zones */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Field Image & Zones</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" /> Upload Image
+              </Button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              {imageFile && <span className="text-sm text-muted-foreground self-center">{imageFile.name}</span>}
             </div>
 
-            {/* Interactive Zone Editor */}
             <div
-              className="relative w-full aspect-square rounded-lg overflow-hidden border-2 border-border bg-gray-100 cursor-crosshair"
+              className="relative w-full aspect-video rounded-lg overflow-hidden border-2 border-border bg-gray-100"
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
             >
-              {/* Background Image */}
               {imagePreview ? (
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${imagePreview})` }}
-                />
+                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${imagePreview})` }} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                  Upload an image to see zone positions
+                  Upload an image to position zones
                 </div>
               )}
 
-              {/* Zone Overlays */}
               {field.zones.map((zone) => {
                 const edit = zoneEdits[zone.id] || { left: 10, top: 10, width: 30, height: 30 };
                 const isSelected = selectedZone === zone.id;
@@ -412,168 +453,91 @@ export default function AdminFieldEditPage() {
                   <div
                     key={zone.id}
                     className={`absolute cursor-move transition-colors ${
-                      isSelected
-                        ? "bg-blue-500/50 border-2 border-blue-500 ring-2 ring-blue-400"
-                        : "bg-green-500/30 border-2 border-green-400 hover:bg-green-500/40"
+                      isSelected ? "bg-blue-500/50 border-2 border-blue-500" : "bg-green-500/30 border-2 border-green-400 hover:bg-green-500/40"
                     }`}
-                    style={{
-                      left: `${edit.left}%`,
-                      top: `${edit.top}%`,
-                      width: `${edit.width}%`,
-                      height: `${edit.height}%`,
-                    }}
+                    style={{ left: `${edit.left}%`, top: `${edit.top}%`, width: `${edit.width}%`, height: `${edit.height}%` }}
                     onMouseDown={(e) => handleMouseDown(e, zone.id)}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="bg-black/60 text-white px-2 py-1 rounded text-sm font-medium">
-                        {zone.name}
-                      </span>
+                      <span className="bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">{zone.name}</span>
                     </div>
-                    {isSelected && (
-                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded cursor-se-resize" />
-                    )}
                   </div>
                 );
               })}
-
-              {/* Instructions */}
-              <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs p-2 rounded">
-                Click and drag zones to position them. Use controls below to resize.
-              </div>
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Zone Controls */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Zone Settings</CardTitle>
-            <Button size="sm" onClick={() => setAddZoneDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Zone
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {field.zones.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No zones created yet. Click "Add Zone" to create one.
-              </p>
-            ) : (
-              field.zones.map((zone) => {
+      {/* Zone Controls */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Zone Settings</CardTitle>
+          <Button size="sm" onClick={() => setAddZoneDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Add Zone
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {field.zones.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No zones. Click "Add Zone" to create one.</p>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {field.zones.map((zone) => {
                 const edit = zoneEdits[zone.id] || { left: 10, top: 10, width: 30, height: 30 };
                 const isSelected = selectedZone === zone.id;
                 
                 return (
                   <div
                     key={zone.id}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      isSelected ? "border-blue-500 bg-blue-50" : "border-border hover:border-gray-400"
-                    }`}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${isSelected ? "border-blue-500 bg-blue-50" : "border-border hover:border-gray-400"}`}
                     onClick={() => setSelectedZone(zone.id)}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-semibold">{zone.name}</span>
-                      <div className="flex items-center gap-2">
-                        <Move className="h-4 w-4 text-muted-foreground" />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteZone(zone.id);
-                          }}
-                          disabled={isDeletingZone === zone.id}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-500" onClick={(e) => { e.stopPropagation(); deleteZone(zone.id); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
-                        <Label className="text-xs">Left (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={Math.round(edit.left)}
-                          onChange={(e) => setZoneEdits(prev => ({
-                            ...prev,
-                            [zone.id]: { ...edit, left: parseInt(e.target.value) || 0 }
-                          }))}
-                          className="h-8"
-                        />
+                        <Label className="text-xs">Left %</Label>
+                        <Input type="number" min="0" max="100" value={Math.round(edit.left)} onChange={(e) => setZoneEdits(prev => ({ ...prev, [zone.id]: { ...edit, left: parseInt(e.target.value) || 0 } }))} className="h-8" />
                       </div>
                       <div>
-                        <Label className="text-xs">Top (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={Math.round(edit.top)}
-                          onChange={(e) => setZoneEdits(prev => ({
-                            ...prev,
-                            [zone.id]: { ...edit, top: parseInt(e.target.value) || 0 }
-                          }))}
-                          className="h-8"
-                        />
+                        <Label className="text-xs">Top %</Label>
+                        <Input type="number" min="0" max="100" value={Math.round(edit.top)} onChange={(e) => setZoneEdits(prev => ({ ...prev, [zone.id]: { ...edit, top: parseInt(e.target.value) || 0 } }))} className="h-8" />
                       </div>
                       <div>
-                        <Label className="text-xs">Width (%)</Label>
-                        <Input
-                          type="number"
-                          min="5"
-                          max="100"
-                          value={Math.round(edit.width)}
-                          onChange={(e) => updateZoneSize(zone.id, 'width', parseInt(e.target.value) || 20)}
-                          className="h-8"
-                        />
+                        <Label className="text-xs">Width %</Label>
+                        <Input type="number" min="5" max="100" value={Math.round(edit.width)} onChange={(e) => updateZoneSize(zone.id, 'width', parseInt(e.target.value) || 20)} className="h-8" />
                       </div>
                       <div>
-                        <Label className="text-xs">Height (%)</Label>
-                        <Input
-                          type="number"
-                          min="5"
-                          max="100"
-                          value={Math.round(edit.height)}
-                          onChange={(e) => updateZoneSize(zone.id, 'height', parseInt(e.target.value) || 20)}
-                          className="h-8"
-                        />
+                        <Label className="text-xs">Height %</Label>
+                        <Input type="number" min="5" max="100" value={Math.round(edit.height)} onChange={(e) => updateZoneSize(zone.id, 'height', parseInt(e.target.value) || 20)} className="h-8" />
                       </div>
                     </div>
                   </div>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add Zone Dialog */}
       <Dialog open={addZoneDialogOpen} onOpenChange={setAddZoneDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Zone</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add New Zone</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="newZoneName">Zone Name</Label>
-              <Input
-                id="newZoneName"
-                value={newZoneName}
-                onChange={(e) => setNewZoneName(e.target.value)}
-                placeholder="Field A, Field B, etc."
-              />
+              <Label>Zone Name</Label>
+              <Input value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} placeholder="Field A, Field B, etc." />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddZoneDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={addZone} disabled={!newZoneName.trim() || isAddingZone}>
-              {isAddingZone ? "Adding..." : "Add Zone"}
-            </Button>
+            <Button variant="outline" onClick={() => setAddZoneDialogOpen(false)}>Cancel</Button>
+            <Button onClick={addZone} disabled={!newZoneName.trim() || isAddingZone}>{isAddingZone ? "Adding..." : "Add Zone"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

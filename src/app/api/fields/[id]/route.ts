@@ -40,18 +40,19 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== "admin") {
+    if (!session || !["admin", "silver_admin", "gold_admin"].includes(session.user.role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, description, imageUrl, allowedTiers, isActive } = body;
+    const { name, address, description, aboutInfo, imageUrl, allowedTiers, isActive } = body;
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (name !== undefined) updateData.name = name;
     if (address !== undefined) updateData.address = address;
     if (description !== undefined) updateData.description = description;
+    if (aboutInfo !== undefined) updateData.aboutInfo = aboutInfo;
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
     if (allowedTiers !== undefined && ["gold", "gold_silver", "silver", "silver_bronze", "bronze", "all"].includes(allowedTiers)) {
       updateData.allowedTiers = allowedTiers;

@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Crown, Medal, Award, Users, Shield } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Edit, Shield, User, Users } from "lucide-react";
 import { toast } from "sonner";
 
-interface UserItem {
+interface UserData {
   id: string;
   name: string;
   email: string;
@@ -24,333 +22,255 @@ interface UserItem {
   createdAt: string;
 }
 
-const tierIcons: Record<string, React.ReactNode> = {
-  gold: <Crown className="h-4 w-4 text-yellow-500" />,
-  silver: <Medal className="h-4 w-4 text-gray-400" />,
-  bronze: <Award className="h-4 w-4 text-amber-600" />,
-};
-
-const tierColors: Record<string, string> = {
-  gold: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  silver: "bg-gray-100 text-gray-800 border-gray-300",
-  bronze: "bg-amber-100 text-amber-800 border-amber-300",
-};
-
 export default function AdminUsersPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editDialog, setEditDialog] = useState<{ open: boolean; user: UserItem | null }>({
-    open: false,
-    user: null,
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [tierFilter, setTierFilter] = useState("all");
+  const [editDialog, setEditDialog] = useState<{ open: boolean; user: UserData | null; tier: string; role: string }>({
+    open: false, user: null, tier: "", role: ""
   });
-  const [selectedTier, setSelectedTier] = useState("bronze");
-  const [selectedRole, setSelectedRole] = useState("user");
-  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    if (status === "loading") return;
-    
-    if (!session || session.user.role !== "admin") {
-      toast.error("Access denied. Admin only.");
-      router.push("/");
-      return;
-    }
-
-    fetchUsers();
-  }, [session, status, router]);
+  useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users");
-      const data = await response.json();
-      setUsers(data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Failed to load users");
-    } finally {
-      setIsLoading(false);
-    }
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (e) { console.error(e); } 
+    finally { setIsLoading(false); }
   };
 
-  const openEditDialog = (user: UserItem) => {
-    setEditDialog({ open: true, user });
-    setSelectedTier(user.tier);
-    setSelectedRole(user.role);
-  };
-
-  const saveUser = async () => {
+  const handleUpdate = async () => {
     if (!editDialog.user) return;
-    
-    setIsSaving(true);
     try {
-      const response = await fetch(`/api/users/${editDialog.user.id}`, {
+      const res = await fetch(`/api/users/${editDialog.user.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: selectedTier, role: selectedRole }),
+        body: JSON.stringify({ tier: editDialog.tier, role: editDialog.role }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update user");
-      }
-
-      toast.success("User updated successfully!");
-      setEditDialog({ open: false, user: null });
+      if (!res.ok) throw new Error("Failed");
+      toast.success("User updated");
       fetchUsers();
-    } catch (error) {
-      console.error("Error updating user:", error);
-      toast.error("Failed to update user");
-    } finally {
-      setIsSaving(false);
-    }
+      setEditDialog({ open: false, user: null, tier: "", role: "" });
+    } catch { toast.error("Failed to update user"); }
   };
 
-  if (status === "loading" || isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 bg-muted rounded"></div>
-          <div className="h-96 bg-muted rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const openEdit = (user: UserData) => {
+    setEditDialog({ open: true, user, tier: user.tier, role: user.role });
+  };
 
-  const goldUsers = users.filter(u => u.tier === "gold").length;
-  const silverUsers = users.filter(u => u.tier === "silver").length;
-  const bronzeUsers = users.filter(u => u.tier === "bronze").length;
+  const getTierBadge = (tier: string) => {
+    const colors: Record<string, string> = {
+      gold: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      silver: "bg-gray-100 text-gray-800 border-gray-300",
+      bronze: "bg-orange-100 text-orange-800 border-orange-300",
+    };
+    return <Badge className={`${colors[tier] || "bg-gray-100"} border`}>{tier}</Badge>;
+  };
+
+  const getRoleBadge = (role: string) => {
+    const styles: Record<string, string> = {
+      user: "bg-blue-50 text-blue-700",
+      silver_admin: "bg-gray-100 text-gray-700 border border-gray-300",
+      gold_admin: "bg-yellow-100 text-yellow-800 border border-yellow-400",
+      admin: "bg-red-100 text-red-700",
+    };
+    const labels: Record<string, string> = {
+      user: "Coach",
+      silver_admin: "Silver Admin",
+      gold_admin: "Gold Admin",
+      admin: "Super Admin",
+    };
+    return <Badge className={styles[role] || "bg-gray-100"}>{labels[role] || role}</Badge>;
+  };
+
+  const filtered = users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         u.teamName?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    const matchesTier = tierFilter === "all" || u.tier === tierFilter;
+    return matchesSearch && matchesRole && matchesTier;
+  });
+
+  if (isLoading) return <div className="animate-pulse h-96 bg-white rounded-lg"></div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/admin">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            Member Management
-          </h1>
-          <p className="text-muted-foreground">
-            Manage coach tiers and access levels
-          </p>
+      <div>
+        <h1 className="text-2xl font-bold">Members</h1>
+        <p className="text-muted-foreground">Manage coaches and admins</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <Users className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{users.length}</p>
+                <p className="text-sm text-muted-foreground">Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-yellow-50 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{users.filter(u => u.tier === "gold").length}</p>
+                <p className="text-sm text-muted-foreground">Gold</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{users.filter(u => u.tier === "silver").length}</p>
+                <p className="text-sm text-muted-foreground">Silver</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{users.filter(u => u.tier === "bronze").length}</p>
+                <p className="text-sm text-muted-foreground">Bronze</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4 flex-wrap">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by name, email, team..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
+        <select className="border rounded-md px-3 py-2" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+          <option value="all">All Roles</option>
+          <option value="user">Coaches</option>
+          <option value="silver_admin">Silver Admin</option>
+          <option value="gold_admin">Gold Admin</option>
+          <option value="admin">Super Admin</option>
+        </select>
+        <select className="border rounded-md px-3 py-2" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
+          <option value="all">All Tiers</option>
+          <option value="gold">Gold</option>
+          <option value="silver">Silver</option>
+          <option value="bronze">Bronze</option>
+        </select>
       </div>
 
-      {/* Tier Stats */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card className="border-yellow-200 bg-yellow-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Crown className="h-5 w-5 text-yellow-500" />
-              Gold Members
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-700">{goldUsers}</div>
-            <p className="text-xs text-yellow-600">Priority access to all fields</p>
-          </CardContent>
-        </Card>
-        <Card className="border-gray-200 bg-gray-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Medal className="h-5 w-5 text-gray-400" />
-              Silver Members
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-700">{silverUsers}</div>
-            <p className="text-xs text-gray-600">Access to silver & bronze fields</p>
-          </CardContent>
-        </Card>
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Award className="h-5 w-5 text-amber-600" />
-              Bronze Members
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-700">{bronzeUsers}</div>
-            <p className="text-xs text-amber-600">Access to bronze fields only</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tier Explanation */}
       <Card>
-        <CardHeader>
-          <CardTitle>How Tier System Works</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg border-2 border-yellow-300 bg-yellow-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Crown className="h-5 w-5 text-yellow-500" />
-                <span className="font-bold text-yellow-700">Gold Coach</span>
-              </div>
-              <ul className="text-sm text-yellow-700 space-y-1">
-                <li>✓ Access to ALL fields (Gold, Silver, Bronze)</li>
-                <li>✓ First priority for booking</li>
-                <li>✓ Early booking window</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-lg border-2 border-gray-300 bg-gray-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Medal className="h-5 w-5 text-gray-400" />
-                <span className="font-bold text-gray-700">Silver Coach</span>
-              </div>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>✓ Access to Silver & Bronze fields</li>
-                <li>✓ Second priority for booking</li>
-                <li>✗ No access to Gold fields</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-lg border-2 border-amber-300 bg-amber-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Award className="h-5 w-5 text-amber-600" />
-                <span className="font-bold text-amber-700">Bronze Coach</span>
-              </div>
-              <ul className="text-sm text-amber-700 space-y-1">
-                <li>✓ Access to Bronze fields only</li>
-                <li>✓ Standard booking priority</li>
-                <li>✗ No access to Gold/Silver fields</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Users Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Members</CardTitle>
-          <CardDescription>
-            Click on a member to edit their tier and role
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Tier</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.teamName || "-"}</TableCell>
-                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                  <TableCell>
-                    <Badge className={`${tierColors[user.tier]} border`}>
-                      <span className="flex items-center gap-1">
-                        {tierIcons[user.tier]}
-                        {user.tier.charAt(0).toUpperCase() + user.tier.slice(1)}
-                      </span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.role === "admin" ? (
-                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                        <Shield className="h-3 w-3" />
-                        Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">User</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button size="sm" variant="outline" onClick={() => openEditDialog(user)}>
-                      Edit
-                    </Button>
-                  </TableCell>
+        <CardContent className="pt-6">
+          {filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-12">No users found</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Team</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm">{user.email}</p>
+                        {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.teamName || "-"}</TableCell>
+                    <TableCell>{getTierBadge(user.tier)}</TableCell>
+                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(user)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Edit User Dialog */}
-      <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ ...editDialog, open })}>
+      {/* Edit Dialog */}
+      <Dialog open={editDialog.open} onOpenChange={(o) => setEditDialog({ ...editDialog, open: o })}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Member: {editDialog.user?.name}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="font-medium">{editDialog.user?.name}</p>
+              <p className="text-sm text-muted-foreground">{editDialog.user?.email}</p>
+            </div>
             <div className="space-y-2">
-              <Label>Coach Tier</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {["gold", "silver", "bronze"].map((tier) => (
-                  <button
-                    key={tier}
-                    type="button"
-                    onClick={() => setSelectedTier(tier)}
-                    className={`p-3 rounded-lg border-2 text-center transition-all ${
-                      selectedTier === tier
-                        ? tier === "gold"
-                          ? "border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200"
-                          : tier === "silver"
-                            ? "border-gray-400 bg-gray-50 ring-2 ring-gray-200"
-                            : "border-amber-400 bg-amber-50 ring-2 ring-amber-200"
-                        : "border-border hover:border-gray-400"
-                    }`}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      {tierIcons[tier]}
-                      <span className="text-sm font-medium capitalize">{tier}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <Label>Membership Tier</Label>
+              <select 
+                className="w-full border rounded-md p-2" 
+                value={editDialog.tier} 
+                onChange={(e) => setEditDialog({ ...editDialog, tier: e.target.value })}
+              >
+                <option value="bronze">Bronze</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
+              </select>
+              <p className="text-xs text-muted-foreground">Tier determines which fields they can book</p>
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole("user")}
-                  className={`p-3 rounded-lg border-2 text-center transition-all ${
-                    selectedRole === "user"
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/30"
-                      : "border-border hover:border-gray-400"
-                  }`}
-                >
-                  <span className="text-sm font-medium">User (Coach)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole("admin")}
-                  className={`p-3 rounded-lg border-2 text-center transition-all ${
-                    selectedRole === "admin"
-                      ? "border-red-400 bg-red-50 ring-2 ring-red-200"
-                      : "border-border hover:border-gray-400"
-                  }`}
-                >
-                  <span className="text-sm font-medium flex items-center justify-center gap-1">
-                    <Shield className="h-4 w-4" />
-                    Admin
-                  </span>
-                </button>
-              </div>
+              <select 
+                className="w-full border rounded-md p-2" 
+                value={editDialog.role} 
+                onChange={(e) => setEditDialog({ ...editDialog, role: e.target.value })}
+              >
+                <option value="user">Coach (Regular User)</option>
+                <option value="silver_admin">Silver Admin (1st Level Approver)</option>
+                <option value="gold_admin">Gold Admin (Final Approver)</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {editDialog.role === "user" && "Can book fields and manage their reservations"}
+                {editDialog.role === "silver_admin" && "Can give first-level approval to reservations"}
+                {editDialog.role === "gold_admin" && "Can give final approval and access all admin features"}
+              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null })}>
-              Cancel
-            </Button>
-            <Button onClick={saveUser} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
+            <Button variant="outline" onClick={() => setEditDialog({ open: false, user: null, tier: "", role: "" })}>Cancel</Button>
+            <Button onClick={handleUpdate}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

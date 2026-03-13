@@ -57,7 +57,7 @@ export async function PUT(
     if (tier !== undefined && ["gold", "silver", "bronze"].includes(tier)) {
       updateData.tier = tier;
     }
-    if (role !== undefined && ["user", "admin"].includes(role)) {
+    if (role !== undefined && ["user", "silver_admin", "gold_admin"].includes(role)) {
       updateData.role = role;
     }
 
