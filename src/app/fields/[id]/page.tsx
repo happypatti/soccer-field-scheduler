@@ -183,11 +183,19 @@ export default function FieldDetailPage() {
     setIsSubmittingIssue(true);
     try {
       const response = await fetch("/api/field-issues", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fieldId: field?.id, issueType: issueData.issueType, description: issueData.description }) });
-      if (!response.ok) throw new Error("Failed");
+      const data = await response.json();
+      if (!response.ok) {
+        console.error("Field issue error:", data);
+        toast.error(data.details || data.error || "Failed to report issue");
+        return;
+      }
       toast.success("Issue reported!");
       setIssueDialogOpen(false);
       setIssueData({ issueType: "", description: "" });
-    } catch { toast.error("Failed"); } finally { setIsSubmittingIssue(false); }
+    } catch (e) { 
+      console.error("Field issue error:", e);
+      toast.error("Failed to report issue"); 
+    } finally { setIsSubmittingIssue(false); }
   };
 
   const getReservationsForSlot = (slotId: string) => {

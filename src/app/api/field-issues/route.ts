@@ -124,8 +124,9 @@ export async function POST(request: Request) {
     return NextResponse.json(newIssue);
   } catch (error) {
     console.error("Error creating field issue:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to create field issue" },
+      { error: "Failed to create field issue", details: errorMessage },
       { status: 500 }
     );
   }

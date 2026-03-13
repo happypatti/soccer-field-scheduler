@@ -53,7 +53,7 @@ export default function Navbar() {
       await fetch("/api/notifications", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationId: id }),
+        body: JSON.stringify({ notificationIds: [id] }),
       });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     } catch (e) { console.error(e); }
