@@ -106,7 +106,8 @@ export default function FieldDetailPage() {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [reservationData, setReservationData] = useState({ date: "", timeSlot: "", notes: "" });
+  const [reservationData, setReservationData] = useState({ date: "", timeSlot: "", notes: "", recurringPattern: "none" });
+  const [maxRecurringMonths, setMaxRecurringMonths] = useState(3);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [fieldReservations, setFieldReservations] = useState<FieldReservation[]>([]);
@@ -165,12 +166,12 @@ export default function FieldDetailPage() {
     if (!selectedSlot) { toast.error("Invalid time slot"); return; }
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zoneId: selectedZone.id, date: reservationData.date, startTime: selectedSlot.startTime, endTime: selectedSlot.endTime, notes: reservationData.notes }) });
+      const response = await fetch("/api/reservations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zoneId: selectedZone.id, date: reservationData.date, startTime: selectedSlot.startTime, endTime: selectedSlot.endTime, notes: reservationData.notes, recurringPattern: reservationData.recurringPattern }) });
       const data = await response.json();
       if (!response.ok) { toast.error(data.error || "Failed"); return; }
-      toast.success("Reservation submitted!");
+      toast.success(data.message || "Reservation submitted!");
       setIsDialogOpen(false);
-      setReservationData({ date: "", timeSlot: "", notes: "" });
+      setReservationData({ date: "", timeSlot: "", notes: "", recurringPattern: "none" });
       router.push("/reservations");
     } catch { toast.error("Error"); } finally { setIsSubmitting(false); }
   };
@@ -308,6 +309,25 @@ export default function FieldDetailPage() {
                   );
                 })}
               </div>
+            </div>
+            {/* Recurring Booking Option */}
+            <div className="space-y-2">
+              <Label>Repeat Booking</Label>
+              <select 
+                className="w-full border rounded-md p-2"
+                value={reservationData.recurringPattern}
+                onChange={(e) => setReservationData({ ...reservationData, recurringPattern: e.target.value })}
+              >
+                <option value="none">One-time booking</option>
+                <option value="weekly">Weekly (every week for {maxRecurringMonths} months)</option>
+                <option value="biweekly">Bi-weekly (every 2 weeks for {maxRecurringMonths} months)</option>
+                <option value="monthly">Monthly (every month for {maxRecurringMonths} months)</option>
+              </select>
+              {reservationData.recurringPattern !== "none" && (
+                <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+                  ⚠️ This will create multiple reservations. Any dates with conflicts will be skipped automatically.
+                </p>
+              )}
             </div>
             <div className="space-y-2"><Label htmlFor="notes">Notes (optional)</Label><textarea id="notes" className="w-full border rounded-md p-2" rows={2} value={reservationData.notes} onChange={(e) => setReservationData({ ...reservationData, notes: e.target.value })} placeholder="Any special requests..." /></div>
           </div>

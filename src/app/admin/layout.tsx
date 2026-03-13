@@ -25,6 +25,7 @@ const sidebarLinks = [
   { href: "/admin/zones", label: "Zones", icon: Layers },
   { href: "/admin/users", label: "Members", icon: Users },
   { href: "/admin/issues", label: "Field Issues", icon: AlertTriangle },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminLayout({

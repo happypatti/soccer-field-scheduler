@@ -61,6 +61,15 @@ export const zones = pgTable("zones", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Site Settings table
+export const siteSettings = pgTable("site_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Password Reset Tokens table
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -92,6 +101,10 @@ export const reservations = pgTable("reservations", {
   // Track if moved from another reservation
   movedFromId: uuid("moved_from_id"),
   movedReason: text("moved_reason"),
+  // Recurring booking support
+  recurringGroupId: uuid("recurring_group_id"), // Links recurring reservations together
+  recurringPattern: varchar("recurring_pattern", { length: 20 }), // 'weekly', 'biweekly', 'monthly'
+  isRecurring: boolean("is_recurring").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
