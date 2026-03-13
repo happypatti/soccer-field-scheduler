@@ -13,6 +13,7 @@ import {
   Users, 
   AlertTriangle,
   Settings,
+  MessageSquare,
   ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ const sidebarLinks = [
   { href: "/admin/zones", label: "Zones", icon: Layers },
   { href: "/admin/users", label: "Members", icon: Users },
   { href: "/admin/issues", label: "Field Issues", icon: AlertTriangle },
+  { href: "/admin/messages", label: "Send Message", icon: MessageSquare },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
