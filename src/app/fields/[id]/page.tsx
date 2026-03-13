@@ -24,6 +24,10 @@ interface Zone {
   description: string | null;
   capacity: number | null;
   pricePerHour: number | null;
+  posLeft: number | null;
+  posTop: number | null;
+  posWidth: number | null;
+  posHeight: number | null;
   isActive: boolean;
 }
 
@@ -135,7 +139,11 @@ function InteractiveSatelliteMap({
         
         {/* Clickable Zone overlays */}
         {activeZones.map((zone, index) => {
-          const position = getZonePosition(zone.name, index, activeZones.length);
+          // Use database positions if available, otherwise fall back to calculated positions
+          const hasDbPosition = zone.posLeft !== null && zone.posTop !== null && zone.posWidth !== null && zone.posHeight !== null;
+          const position = hasDbPosition 
+            ? { left: `${zone.posLeft}%`, top: `${zone.posTop}%`, width: `${zone.posWidth}%`, height: `${zone.posHeight}%` }
+            : getZonePosition(zone.name, index, activeZones.length);
           const isSelected = selectedZone?.id === zone.id;
           const isHovered = hoveredZone === zone.id;
           

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { zones } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: Request,
@@ -17,11 +17,6 @@ export async function GET(
         field: {
           with: {
             city: true,
-          },
-        },
-        reservations: {
-          with: {
-            user: true,
           },
         },
       },
@@ -54,26 +49,30 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, capacity, pricePerHour, isActive } = body;
+    const { name, description, capacity, pricePerHour, posLeft, posTop, posWidth, posHeight, isActive } = body;
 
-    const [updatedZone] = await db
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (capacity !== undefined) updateData.capacity = capacity;
+    if (pricePerHour !== undefined) updateData.pricePerHour = pricePerHour;
+    if (posLeft !== undefined) updateData.posLeft = posLeft;
+    if (posTop !== undefined) updateData.posTop = posTop;
+    if (posWidth !== undefined) updateData.posWidth = posWidth;
+    if (posHeight !== undefined) updateData.posHeight = posHeight;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    const [updated] = await db
       .update(zones)
-      .set({
-        name,
-        description,
-        capacity,
-        pricePerHour,
-        isActive,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(zones.id, id))
       .returning();
 
-    if (!updatedZone) {
+    if (!updated) {
       return NextResponse.json({ error: "Zone not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updatedZone);
+    return NextResponse.json(updated);
   } catch (error) {
     console.error("Error updating zone:", error);
     return NextResponse.json(
@@ -95,16 +94,9 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const [deletedZone] = await db
-      .delete(zones)
-      .where(eq(zones.id, id))
-      .returning();
+    await db.delete(zones).where(eq(zones.id, id));
 
-    if (!deletedZone) {
-      return NextResponse.json({ error: "Zone not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: "Zone deleted successfully" });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting zone:", error);
     return NextResponse.json(

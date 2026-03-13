@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   teamName: varchar("team_name", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   role: varchar("role", { length: 20 }).notNull().default("user"), // 'user' or 'admin'
+  tier: varchar("tier", { length: 20 }).notNull().default("bronze"), // 'gold', 'silver', 'bronze'
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -45,6 +46,11 @@ export const zones = pgTable("zones", {
   description: text("description"),
   capacity: integer("capacity"), // max players
   pricePerHour: integer("price_per_hour"), // in cents
+  // Zone overlay positioning (percentages)
+  posLeft: integer("pos_left"), // left position %
+  posTop: integer("pos_top"), // top position %
+  posWidth: integer("pos_width"), // width %
+  posHeight: integer("pos_height"), // height %
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

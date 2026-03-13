@@ -34,18 +34,6 @@ export default function Home() {
             />
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">
-            Schedule Your
-            <span className="block bg-gradient-to-r from-green-600 via-emerald-500 to-teal-500 bg-clip-text text-transparent">
-              Soccer Field
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            The simple way to reserve field time. View availability, select your zone, 
-            and book instantly.
-          </p>
-          
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Link href="/cities">
               <Button size="lg" className="text-lg px-8 h-14 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/25">

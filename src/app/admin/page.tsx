@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, Check, X, Plus, MapPin, Building, Layers, User } from "lucide-react";
+import { Calendar, Clock, Check, X, Plus, MapPin, Building, Layers, User, Edit } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -495,6 +495,7 @@ export default function AdminPage() {
                       <TableHead>City</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -507,6 +508,16 @@ export default function AdminPage() {
                           <Badge variant={field.isActive ? "default" : "secondary"}>
                             {field.isActive ? "Active" : "Inactive"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/admin/fields/${field.id}`)}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -542,8 +553,6 @@ export default function AdminPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Field</TableHead>
-                      <TableHead>Capacity</TableHead>
-                      <TableHead>Price/Hour</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -552,12 +561,6 @@ export default function AdminPage() {
                       <TableRow key={zone.id}>
                         <TableCell className="font-medium">{zone.name}</TableCell>
                         <TableCell>{(zone as any).field?.name || "-"}</TableCell>
-                        <TableCell>{zone.capacity || "-"}</TableCell>
-                        <TableCell>
-                          {zone.pricePerHour
-                            ? `$${(zone.pricePerHour / 100).toFixed(2)}`
-                            : "-"}
-                        </TableCell>
                         <TableCell>
                           <Badge variant={zone.isActive ? "default" : "secondary"}>
                             {zone.isActive ? "Active" : "Inactive"}
@@ -710,39 +713,8 @@ export default function AdminPage() {
                 id="zoneName"
                 value={newZone.name}
                 onChange={(e) => setNewZone({ ...newZone, name: e.target.value })}
-                placeholder="Full Field, Half Field A, etc."
+                placeholder="Field A, Field B, etc."
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="zoneDescription">Description</Label>
-              <Input
-                id="zoneDescription"
-                value={newZone.description}
-                onChange={(e) => setNewZone({ ...newZone, description: e.target.value })}
-                placeholder="11v11 full size field"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="zoneCapacity">Capacity (players)</Label>
-                <Input
-                  id="zoneCapacity"
-                  type="number"
-                  value={newZone.capacity}
-                  onChange={(e) => setNewZone({ ...newZone, capacity: e.target.value })}
-                  placeholder="22"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="zonePrice">Price per Hour ($)</Label>
-                <Input
-                  id="zonePrice"
-                  type="number"
-                  value={newZone.pricePerHour}
-                  onChange={(e) => setNewZone({ ...newZone, pricePerHour: e.target.value })}
-                  placeholder="50"
-                />
-              </div>
             </div>
           </div>
           <DialogFooter>

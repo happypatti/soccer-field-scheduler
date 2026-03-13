@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { reservations } from "@/lib/db/schema";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
@@ -83,6 +83,16 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(allReservations);
+  } catch (error) {
+    console.error("Error fetching reservations:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch reservations" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
