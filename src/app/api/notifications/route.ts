@@ -59,3 +59,39 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+// Delete notifications
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { notificationIds, deleteAll } = body;
+
+    if (deleteAll) {
+      // Delete all notifications for user
+      await db
+        .delete(notifications)
+        .where(eq(notifications.userId, session.user.id));
+    } else if (notificationIds && Array.isArray(notificationIds)) {
+      // Delete specific notifications
+      for (const id of notificationIds) {
+        await db
+          .delete(notifications)
+          .where(eq(notifications.id, id));
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting notifications:", error);
+    return NextResponse.json(
+      { error: "Failed to delete notifications" },
+      { status: 500 }
+    );
+  }
+}

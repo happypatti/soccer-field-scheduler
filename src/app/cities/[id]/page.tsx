@@ -90,23 +90,6 @@ function ZoneCard({ zone }: { zone: Zone }) {
           {zone.isActive ? "Available" : "Unavailable"}
         </Badge>
       </div>
-      <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-        {zone.capacity && (
-          <div className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            <span>{zone.capacity} players</span>
-          </div>
-        )}
-        {zone.pricePerHour && (
-          <div className="flex items-center gap-1">
-            <DollarSign className="h-3 w-3" />
-            <span>${(zone.pricePerHour / 100).toFixed(0)}/hr</span>
-          </div>
-        )}
-      </div>
-      {zone.description && (
-        <p className="mt-1 text-xs text-muted-foreground">{zone.description}</p>
-      )}
     </div>
   );
 }

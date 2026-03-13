@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Inbox, Bell, Check, CheckCheck, Calendar, AlertTriangle, Trash2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Inbox, Bell, Check, CheckCheck, Calendar, AlertTriangle, Trash2, RefreshCw, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -77,6 +77,38 @@ export default function NotificationsPage() {
       toast.success("All notifications marked as read");
     } catch (e) {
       toast.error("Failed to mark all as read");
+    }
+  };
+
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationIds: [id] }),
+      });
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      toast.success("Notification deleted");
+    } catch (e) {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const deleteAllNotifications = async () => {
+    if (notifications.length === 0) return;
+    if (!confirm("Delete all notifications? This cannot be undone.")) return;
+    
+    try {
+      await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deleteAll: true }),
+      });
+      setNotifications([]);
+      toast.success("All notifications deleted");
+    } catch (e) {
+      toast.error("Failed to delete all");
     }
   };
 
@@ -169,6 +201,12 @@ export default function NotificationsPage() {
               Mark all read
             </Button>
           )}
+          {notifications.length > 0 && (
+            <Button variant="outline" size="sm" onClick={deleteAllNotifications} className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete all
+            </Button>
+          )}
         </div>
       </div>
 
@@ -231,9 +269,18 @@ export default function NotificationsPage() {
                         </h3>
                         {getTypeBadge(notification.type)}
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDate(notification.createdAt)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {formatDate(notification.createdAt)}
+                        </span>
+                        <button 
+                          onClick={(e) => deleteNotification(notification.id, e)}
+                          className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Delete notification"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                     <p className={`text-sm ${!notification.isRead ? 'text-gray-800' : 'text-muted-foreground'}`}>
                       {notification.message}
