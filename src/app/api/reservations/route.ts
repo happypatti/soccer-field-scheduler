@@ -66,29 +66,23 @@ export async function GET(request: Request) {
         },
       });
 
-      // Include coach info if requested (for logged in users)
-      if (includeCoachInfo && session) {
-        return NextResponse.json(fieldReservations.map(r => ({
-          id: r.id,
-          zoneId: r.zoneId,
-          zoneName: r.zone?.name,
-          startTime: r.startTime,
-          endTime: r.endTime,
-          status: r.status,
-          date: r.date,
-          coachName: r.user?.name,
-          teamName: r.user?.teamName,
-        })));
-      }
-
+      // Always include coach info for logged in users when viewing field reservations
       return NextResponse.json(fieldReservations.map(r => ({
         id: r.id,
         zoneId: r.zoneId,
-        zoneName: r.zone?.name,
+        date: r.date,
         startTime: r.startTime,
         endTime: r.endTime,
         status: r.status,
-        date: r.date,
+        user: {
+          id: r.user?.id,
+          name: r.user?.name || "Unknown",
+          teamName: r.user?.teamName || null,
+        },
+        zone: {
+          id: r.zone?.id,
+          name: r.zone?.name || "Unknown",
+        },
       })));
     }
 

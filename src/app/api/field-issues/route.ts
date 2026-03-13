@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { fieldIssues, notifications, users, reservations } from "@/lib/db/schema";
+import { fieldIssues, notifications, users, fields } from "@/lib/db/schema";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { eq, desc, and, inArray } from "drizzle-orm";
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
+    if (!session || !session.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -73,10 +73,19 @@ export async function POST(request: Request) {
     }
 
     // Get field info
-    const field = await db.query.fields.findFirst({
-      where: eq(fieldIssues.fieldId, fieldId),
-    });
+    let fieldName = "a field";
+    try {
+      const field = await db.query.fields.findFirst({
+        where: eq(fields.id, fieldId),
+      });
+      if (field) {
+        fieldName = field.name;
+      }
+    } catch (e) {
+      console.error("Error fetching field:", e);
+    }
 
+    // Create the issue
     const [newIssue] = await db
       .insert(fieldIssues)
       .values({
@@ -84,22 +93,32 @@ export async function POST(request: Request) {
         reportedBy: session.user.id,
         issueType: issueType || "other",
         description,
+        status: "open",
       })
       .returning();
 
-    // Notify all admins about the new issue
-    const admins = await db.query.users.findMany({
-      where: inArray(users.role, ["silver_admin", "gold_admin", "admin"]),
-    });
-
-    for (const admin of admins) {
-      await db.insert(notifications).values({
-        userId: admin.id,
-        type: "field_issue",
-        title: `New Field Issue: ${issueType || "Other"}`,
-        message: `${session.user.name} reported an issue at ${field?.name || "a field"}: ${description.substring(0, 100)}...`,
-        relatedFieldId: fieldId,
+    // Try to notify admins (but don't fail if this fails)
+    try {
+      const admins = await db.query.users.findMany({
+        where: inArray(users.role, ["silver_admin", "gold_admin", "admin"]),
       });
+
+      const reporterName = session.user.name || "A coach";
+      const issueLabel = issueType || "Other";
+      const descPreview = description.length > 100 ? description.substring(0, 100) + "..." : description;
+
+      for (const admin of admins) {
+        await db.insert(notifications).values({
+          userId: admin.id,
+          type: "field_issue",
+          title: `New Field Issue: ${issueLabel}`,
+          message: `${reporterName} reported an issue at ${fieldName}: ${descPreview}`,
+          relatedFieldId: fieldId,
+        });
+      }
+    } catch (notifError) {
+      console.error("Error sending notifications:", notifError);
+      // Don't fail the request if notifications fail
     }
 
     return NextResponse.json(newIssue);
