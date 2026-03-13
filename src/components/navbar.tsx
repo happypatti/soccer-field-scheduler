@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut, Bell } from "lucide-react";
+import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut, Bell, Inbox } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -226,6 +226,18 @@ export default function Navbar() {
                       </div>
                     </div>
                     <DropdownMenuItem 
+                      onClick={() => router.push("/notifications")}
+                      className="cursor-pointer rounded-lg"
+                    >
+                      <Inbox className="mr-2 h-4 w-4" />
+                      Inbox
+                      {unreadCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
                       onClick={() => router.push("/reservations")}
                       className="cursor-pointer rounded-lg"
                     >
@@ -299,6 +311,25 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {session && (
+              <Link
+                href="/notifications"
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  isActivePath("/notifications")
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Inbox className="h-5 w-5" />
+                Inbox
+                {unreadCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
             {authLinks.map((link) => (
               <Link
                 key={link.href}
