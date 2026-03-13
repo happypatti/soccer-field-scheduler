@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { messages, notifications, users } from "@/lib/db/schema";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { eq, desc, and, or, sql } from "drizzle-orm";
+import { eq, desc, and, or, sql, ne } from "drizzle-orm";
 import crypto from "crypto";
 
 function isAdmin(role: string): boolean {
@@ -23,8 +23,6 @@ export async function GET(request: Request) {
     const conversationId = searchParams.get("conversationId");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    const userIsAdmin = isAdmin(session.user.role);
-
     if (conversationId) {
       // Get specific conversation
       const conversationMessages = await db.query.messages.findMany({
@@ -32,20 +30,17 @@ export async function GET(request: Request) {
         orderBy: [desc(messages.createdAt)],
         with: {
           sender: {
-            columns: { id: true, name: true, email: true, role: true },
+            columns: { id: true, name: true, email: true, role: true, tier: true },
           },
           receiver: {
-            columns: { id: true, name: true, email: true, role: true },
+            columns: { id: true, name: true, email: true, role: true, tier: true },
           },
         },
       });
 
       // Verify user has access to this conversation
       const hasAccess = conversationMessages.some(
-        (m) =>
-          m.senderId === session.user.id ||
-          m.receiverId === session.user.id ||
-          (userIsAdmin && (m.receiverId === null || m.isFromAdmin))
+        (m) => m.senderId === session.user.id || m.receiverId === session.user.id
       );
 
       if (!hasAccess && conversationMessages.length > 0) {
@@ -55,68 +50,44 @@ export async function GET(request: Request) {
       return NextResponse.json(conversationMessages);
     }
 
-    // Get all conversations (grouped)
-    let userMessages;
-
-    if (userIsAdmin) {
-      // Admins see all messages sent to admins (receiverId = null) plus direct messages
-      userMessages = await db.query.messages.findMany({
-        where: or(
-          eq(messages.senderId, session.user.id),
-          eq(messages.receiverId, session.user.id),
-          eq(messages.receiverId, sql`null`) // Messages sent to "all admins"
-        ),
-        orderBy: [desc(messages.createdAt)],
-        limit: limit * 5, // Get more to group conversations
-        with: {
-          sender: {
-            columns: { id: true, name: true, email: true, role: true, tier: true },
-          },
-          receiver: {
-            columns: { id: true, name: true, email: true, role: true },
-          },
+    // Get all conversations for the user
+    const userMessages = await db.query.messages.findMany({
+      where: or(
+        eq(messages.senderId, session.user.id),
+        eq(messages.receiverId, session.user.id)
+      ),
+      orderBy: [desc(messages.createdAt)],
+      limit: limit * 5, // Get more to group conversations
+      with: {
+        sender: {
+          columns: { id: true, name: true, email: true, role: true, tier: true },
         },
-      });
-    } else {
-      // Regular users see only their messages
-      userMessages = await db.query.messages.findMany({
-        where: or(
-          eq(messages.senderId, session.user.id),
-          eq(messages.receiverId, session.user.id)
-        ),
-        orderBy: [desc(messages.createdAt)],
-        limit: limit,
-        with: {
-          sender: {
-            columns: { id: true, name: true, email: true, role: true },
-          },
-          receiver: {
-            columns: { id: true, name: true, email: true, role: true },
-          },
+        receiver: {
+          columns: { id: true, name: true, email: true, role: true, tier: true },
         },
-      });
-    }
+      },
+    });
 
     // Group by conversation and get latest message
     const conversations = new Map();
     for (const msg of userMessages) {
       if (!conversations.has(msg.conversationId)) {
+        // Get the other person in the conversation
+        const otherPerson = msg.senderId === session.user.id ? msg.receiver : msg.sender;
+        
         conversations.set(msg.conversationId, {
           conversationId: msg.conversationId,
           subject: msg.subject,
           lastMessage: msg,
           unreadCount: 0,
           messages: [],
+          otherPerson: otherPerson,
         });
       }
       conversations.get(msg.conversationId).messages.push(msg);
       
-      // Count unread for current user
+      // Count unread messages sent TO the current user
       if (!msg.isRead && msg.receiverId === session.user.id) {
-        conversations.get(msg.conversationId).unreadCount++;
-      }
-      // For admins, count unread messages sent to all admins
-      if (userIsAdmin && !msg.isRead && msg.receiverId === null && !msg.isFromAdmin) {
         conversations.get(msg.conversationId).unreadCount++;
       }
     }
@@ -156,22 +127,50 @@ export async function POST(request: Request) {
       receiverId, 
       conversationId, 
       relatedReservationId,
-      parentMessageId 
     } = body;
 
     if (!content?.trim()) {
       return NextResponse.json({ error: "Message content is required" }, { status: 400 });
     }
 
-    const userIsAdmin = isAdmin(session.user.role);
+    if (!receiverId && !conversationId) {
+      return NextResponse.json({ error: "Recipient or conversation is required" }, { status: 400 });
+    }
 
-    // If replying to conversation, use existing conversationId, otherwise create new
-    const convId = conversationId || crypto.randomUUID();
+    // If replying to conversation, get receiver from existing conversation
+    let actualReceiverId = receiverId;
+    let convId = conversationId || crypto.randomUUID();
+    
+    if (conversationId && !receiverId) {
+      // Find the other person in the conversation
+      const existingMsg = await db.query.messages.findFirst({
+        where: eq(messages.conversationId, conversationId),
+      });
+      
+      if (existingMsg) {
+        actualReceiverId = existingMsg.senderId === session.user.id 
+          ? existingMsg.receiverId 
+          : existingMsg.senderId;
+      }
+    }
+
+    if (!actualReceiverId) {
+      return NextResponse.json({ error: "Could not determine recipient" }, { status: 400 });
+    }
+
+    // Verify recipient exists
+    const recipient = await db.query.users.findFirst({
+      where: eq(users.id, actualReceiverId),
+      columns: { id: true, name: true },
+    });
+
+    if (!recipient) {
+      return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+    }
 
     // Determine message subject
     let messageSubject = subject;
     if (!messageSubject && conversationId) {
-      // Get subject from existing conversation
       const existingMsg = await db.query.messages.findFirst({
         where: eq(messages.conversationId, conversationId),
       });
@@ -181,55 +180,33 @@ export async function POST(request: Request) {
       messageSubject = "New Message";
     }
 
+    const userIsAdmin = isAdmin(session.user.role);
+
     // Create the message
     const [newMessage] = await db.insert(messages).values({
       conversationId: convId,
       senderId: session.user.id,
-      receiverId: receiverId || null, // null = sent to all admins
+      receiverId: actualReceiverId,
       subject: messageSubject,
       content: content.trim(),
       isFromAdmin: userIsAdmin,
       relatedReservationId: relatedReservationId || null,
-      parentMessageId: parentMessageId || null,
     }).returning();
 
-    // Create notification for recipient(s)
-    if (userIsAdmin && receiverId) {
-      // Admin replying to specific user
-      await db.insert(notifications).values({
-        userId: receiverId,
-        type: "message",
-        title: `New message from Admin`,
-        message: content.length > 100 ? content.substring(0, 100) + "..." : content,
-        relatedMessageId: newMessage.id,
-      });
-    } else if (!userIsAdmin) {
-      // User sending to admins - notify all admins
-      const admins = await db.query.users.findMany({
-        where: or(
-          eq(users.role, "admin"),
-          eq(users.role, "silver_admin"),
-          eq(users.role, "gold_admin")
-        ),
-        columns: { id: true },
-      });
+    // Get sender name for notification
+    const sender = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { name: true },
+    });
 
-      // Get sender name for notification
-      const sender = await db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
-        columns: { name: true },
-      });
-
-      for (const admin of admins) {
-        await db.insert(notifications).values({
-          userId: admin.id,
-          type: "message",
-          title: `New message from ${sender?.name || "User"}`,
-          message: content.length > 100 ? content.substring(0, 100) + "..." : content,
-          relatedMessageId: newMessage.id,
-        });
-      }
-    }
+    // Create notification for recipient
+    await db.insert(notifications).values({
+      userId: actualReceiverId,
+      type: "message",
+      title: `New message from ${sender?.name || "User"}`,
+      message: content.length > 100 ? content.substring(0, 100) + "..." : content,
+      relatedMessageId: newMessage.id,
+    });
 
     return NextResponse.json({ 
       success: true, 
@@ -258,38 +235,19 @@ export async function PUT(request: Request) {
     const { messageIds, conversationId } = body;
 
     const now = new Date();
-    const userIsAdmin = isAdmin(session.user.role);
 
     if (conversationId) {
-      // Mark all messages in conversation as read
-      if (userIsAdmin) {
-        // Admin can mark messages from users as read
-        await db
-          .update(messages)
-          .set({ isRead: true, readAt: now })
-          .where(
-            and(
-              eq(messages.conversationId, conversationId),
-              eq(messages.isRead, false),
-              or(
-                eq(messages.receiverId, session.user.id),
-                eq(messages.receiverId, sql`null`)
-              )
-            )
-          );
-      } else {
-        // User can mark messages from admin as read
-        await db
-          .update(messages)
-          .set({ isRead: true, readAt: now })
-          .where(
-            and(
-              eq(messages.conversationId, conversationId),
-              eq(messages.receiverId, session.user.id),
-              eq(messages.isRead, false)
-            )
-          );
-      }
+      // Mark all messages in conversation as read (only messages sent TO the current user)
+      await db
+        .update(messages)
+        .set({ isRead: true, readAt: now })
+        .where(
+          and(
+            eq(messages.conversationId, conversationId),
+            eq(messages.receiverId, session.user.id),
+            eq(messages.isRead, false)
+          )
+        );
     } else if (messageIds && Array.isArray(messageIds)) {
       for (const id of messageIds) {
         await db
@@ -298,10 +256,7 @@ export async function PUT(request: Request) {
           .where(
             and(
               eq(messages.id, id),
-              or(
-                eq(messages.receiverId, session.user.id),
-                userIsAdmin ? eq(messages.receiverId, sql`null`) : sql`false`
-              )
+              eq(messages.receiverId, session.user.id)
             )
           );
       }

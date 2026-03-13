@@ -42,10 +42,10 @@ export default function Home() {
           
           <div className="space-y-4">
             <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-              Field Scheduling Made Easy
+              Field Scheduling
             </h1>
             <p className="text-xl text-muted-foreground max-w-xl mx-auto">
-              Book training sessions on LA Soccer Club fields
+              Book training sessions now
             </p>
           </div>
           
