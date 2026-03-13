@@ -7,9 +7,9 @@ import { eq } from "drizzle-orm";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, password, name, phone } = body;
+    const { email, password, name, teamName, phone } = body;
 
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !teamName) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         email,
         password: hashedPassword,
         name,
+        teamName,
         phone,
         role: "user",
       })

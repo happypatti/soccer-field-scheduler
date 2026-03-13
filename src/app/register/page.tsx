@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    teamName: "",
     email: "",
     phone: "",
     password: "",
@@ -43,6 +44,7 @@ export default function RegisterPage() {
         },
         body: JSON.stringify({
           name: formData.name,
+          teamName: formData.teamName,
           email: formData.email,
           phone: formData.phone,
           password: formData.password,
@@ -87,6 +89,20 @@ export default function RegisterPage() {
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
+                }
+                required
+                disabled={isLoading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="teamName">Team Name</Label>
+              <Input
+                id="teamName"
+                type="text"
+                placeholder="FC United"
+                value={formData.teamName}
+                onChange={(e) =>
+                  setFormData({ ...formData, teamName: e.target.value })
                 }
                 required
                 disabled={isLoading}

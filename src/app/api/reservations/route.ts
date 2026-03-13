@@ -9,14 +9,34 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const zoneId = searchParams.get("zoneId");
     const date = searchParams.get("date");
+
+    // If checking availability for a specific zone and date (public access allowed)
+    if (zoneId && date) {
+      const zoneReservations = await db.query.reservations.findMany({
+        where: and(
+          eq(reservations.zoneId, zoneId),
+          eq(reservations.date, date)
+        ),
+      });
+      
+      // Only return basic info for public availability check
+      return NextResponse.json(zoneReservations.map(r => ({
+        id: r.id,
+        startTime: r.startTime,
+        endTime: r.endTime,
+        status: r.status,
+        date: r.date,
+      })));
+    }
+
+    // For other queries, require authentication
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Admin can see all reservations, users only see their own
     const isAdmin = session.user.role === "admin";
@@ -62,27 +82,7 @@ export async function GET(request: Request) {
       allReservations = allReservations.filter((r) => r.status === status);
     }
 
-    // Filter by zone if provided
-    if (zoneId) {
-      allReservations = allReservations.filter((r) => r.zoneId === zoneId);
-    }
-
-    // Filter by date if provided
-    if (date) {
-      allReservations = allReservations.filter((r) => r.date === date);
-    }
-
     return NextResponse.json(allReservations);
-  } catch (error) {
-    console.error("Error fetching reservations:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch reservations" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 

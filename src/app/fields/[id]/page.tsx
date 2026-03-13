@@ -267,10 +267,74 @@ export default function FieldDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reservationData, setReservationData] = useState({
     date: "",
-    startTime: "",
-    endTime: "",
+    timeSlot: "", // "18:00-19:30" or "19:30-21:00"
     notes: "",
   });
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  // Available time slots
+  const TIME_SLOTS = [
+    { id: "18:00-19:30", label: "6:00 PM - 7:30 PM", startTime: "18:00", endTime: "19:30" },
+    { id: "19:30-21:00", label: "7:30 PM - 9:00 PM", startTime: "19:30", endTime: "21:00" },
+  ];
+
+  // Fetch booked slots when date or zone changes
+  useEffect(() => {
+    const fetchBookedSlots = async () => {
+      if (!reservationData.date || !selectedZone) {
+        setBookedSlots([]);
+        return;
+      }
+
+      setIsLoadingSlots(true);
+      try {
+        const response = await fetch(
+          `/api/reservations?zoneId=${selectedZone.id}&date=${reservationData.date}`
+        );
+        const reservations = await response.json();
+        
+        // Extract booked time slots
+        const booked = reservations
+          .filter((r: { status: string }) => r.status === "confirmed" || r.status === "pending")
+          .map((r: { startTime: string; endTime: string }) => `${r.startTime}-${r.endTime}`);
+        
+        setBookedSlots(booked);
+      } catch (error) {
+        console.error("Error fetching reservations:", error);
+        setBookedSlots([]);
+      } finally {
+        setIsLoadingSlots(false);
+      }
+    };
+
+    fetchBookedSlots();
+  }, [reservationData.date, selectedZone]);
+
+  // Function to check if a date is allowed (Mon-Fri only, no weekends)
+  const isDateAllowed = (dateString: string) => {
+    const date = new Date(dateString + "T00:00:00");
+    const dayOfWeek = date.getDay();
+    // 0 = Sunday, 6 = Saturday - block weekends
+    return dayOfWeek !== 0 && dayOfWeek !== 6;
+  };
+
+  // Get minimum allowed date (today or next weekday)
+  const getMinDate = () => {
+    const today = new Date();
+    const minDate = new Date(today);
+    
+    // If today is Saturday, move to Monday
+    if (minDate.getDay() === 6) {
+      minDate.setDate(minDate.getDate() + 2);
+    }
+    // If today is Sunday, move to Monday
+    else if (minDate.getDay() === 0) {
+      minDate.setDate(minDate.getDate() + 1);
+    }
+    
+    return minDate.toISOString().split("T")[0];
+  };
 
   useEffect(() => {
     const fetchField = async () => {
@@ -297,8 +361,21 @@ export default function FieldDetailPage() {
       return;
     }
 
-    if (!selectedZone || !reservationData.date || !reservationData.startTime || !reservationData.endTime) {
+    if (!selectedZone || !reservationData.date || !reservationData.timeSlot) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate that the date is a weekday (Mon-Fri)
+    if (!isDateAllowed(reservationData.date)) {
+      toast.error("Bookings are only available Monday through Friday");
+      return;
+    }
+
+    // Get the selected time slot details
+    const selectedSlot = TIME_SLOTS.find(slot => slot.id === reservationData.timeSlot);
+    if (!selectedSlot) {
+      toast.error("Please select a valid time slot");
       return;
     }
 
@@ -313,8 +390,8 @@ export default function FieldDetailPage() {
         body: JSON.stringify({
           zoneId: selectedZone.id,
           date: reservationData.date,
-          startTime: reservationData.startTime,
-          endTime: reservationData.endTime,
+          startTime: selectedSlot.startTime,
+          endTime: selectedSlot.endTime,
           notes: reservationData.notes,
         }),
       });
@@ -328,7 +405,7 @@ export default function FieldDetailPage() {
 
       toast.success("Reservation submitted successfully! Awaiting admin approval.");
       setIsDialogOpen(false);
-      setReservationData({ date: "", startTime: "", endTime: "", notes: "" });
+      setReservationData({ date: "", timeSlot: "", notes: "" });
       router.push("/reservations");
     } catch {
       toast.error("Something went wrong");
@@ -493,51 +570,107 @@ export default function FieldDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Date Selection */}
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date">Date (Mon-Fri only)</Label>
               <Input
                 id="date"
                 type="date"
                 value={reservationData.date}
-                onChange={(e) =>
-                  setReservationData({ ...reservationData, date: e.target.value })
-                }
-                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => {
+                  const selectedDate = e.target.value;
+                  if (selectedDate && !isDateAllowed(selectedDate)) {
+                    toast.error("Please select a weekday (Monday - Friday)");
+                    return;
+                  }
+                  setReservationData({ ...reservationData, date: selectedDate });
+                }}
+                min={getMinDate()}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Training sessions are available Monday through Friday only
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={reservationData.startTime}
-                  onChange={(e) =>
-                    setReservationData({
-                      ...reservationData,
-                      startTime: e.target.value,
-                    })
-                  }
-                  required
-                />
+
+            {/* Time Slot Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Time Slot</Label>
+                {isLoadingSlots && (
+                  <span className="text-xs text-muted-foreground">Checking availability...</span>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={reservationData.endTime}
-                  onChange={(e) =>
-                    setReservationData({
-                      ...reservationData,
-                      endTime: e.target.value,
-                    })
-                  }
-                  required
-                />
+              <div className="grid grid-cols-1 gap-2">
+                {TIME_SLOTS.map((slot) => {
+                  const isBooked = bookedSlots.includes(slot.id);
+                  const isSelected = reservationData.timeSlot === slot.id;
+                  
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      disabled={isBooked || !reservationData.date}
+                      onClick={() => {
+                        if (!isBooked) {
+                          setReservationData({ ...reservationData, timeSlot: slot.id });
+                        }
+                      }}
+                      className={`p-4 rounded-lg border-2 text-left transition-all ${
+                        isBooked
+                          ? "border-red-200 bg-red-50 cursor-not-allowed opacity-60"
+                          : isSelected
+                            ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                            : !reservationData.date
+                              ? "border-border bg-muted/30 cursor-not-allowed"
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            isBooked
+                              ? "border-red-400 bg-red-400"
+                              : isSelected 
+                                ? "border-primary bg-primary" 
+                                : "border-muted-foreground"
+                          }`}>
+                            {isSelected && !isBooked && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                            {isBooked && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`font-medium ${isBooked ? "text-red-600 line-through" : ""}`}>
+                            {slot.label}
+                          </span>
+                        </div>
+                        {isBooked ? (
+                          <Badge variant="destructive" className="text-xs">Booked</Badge>
+                        ) : reservationData.date ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">Available</Badge>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+              {!reservationData.date && (
+                <p className="text-xs text-muted-foreground">
+                  Select a date first to see availability
+                </p>
+              )}
+              {reservationData.date && bookedSlots.length === TIME_SLOTS.length && (
+                <p className="text-xs text-red-600">
+                  All time slots are booked for this date. Please select a different date.
+                </p>
+              )}
             </div>
+
+            {/* Notes */}
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (Optional)</Label>
               <Input
@@ -549,13 +682,6 @@ export default function FieldDetailPage() {
                 }
               />
             </div>
-            {selectedZone?.pricePerHour && (
-              <div className="bg-muted p-3 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Price: ${(selectedZone.pricePerHour / 100).toFixed(2)} per hour
-                </p>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

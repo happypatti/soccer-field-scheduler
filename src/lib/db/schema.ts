@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: varchar("password", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  teamName: varchar("team_name", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   role: varchar("role", { length: 20 }).notNull().default("user"), // 'user' or 'admin'
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -47,6 +48,16 @@ export const zones = pgTable("zones", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Password Reset Tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Reservations table

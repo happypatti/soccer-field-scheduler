@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function Home() {
   return (
@@ -21,9 +22,16 @@ export default function Home() {
         </div>
         
         <div className="text-center space-y-8 py-16 md:py-24">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-            <Zap className="h-4 w-4" />
-            Internal Field Scheduling System
+          {/* Logo */}
+          <div className="flex justify-center">
+            <Image 
+              src="/lasc.png" 
+              alt="LASC Logo" 
+              width={180} 
+              height={180}
+              className="drop-shadow-xl"
+              priority
+            />
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight">

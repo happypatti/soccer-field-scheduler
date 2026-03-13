@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut, User } from "lucide-react";
+import { Menu, X, MapPin, CalendarDays, LayoutDashboard, LogOut } from "lucide-react";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -47,19 +48,19 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/20 group-hover:shadow-green-500/40 transition-shadow">
-              <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
-                <circle cx="12" cy="12" r="3" fill="currentColor"/>
-                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-            </div>
+            <Image 
+              src="/lasc.png" 
+              alt="LASC Logo" 
+              width={44} 
+              height={44}
+              className="drop-shadow-md group-hover:drop-shadow-lg transition-all"
+            />
             <div className="hidden sm:block">
               <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                Field Scheduler
+                LASC
               </span>
               <span className="block text-[10px] text-muted-foreground -mt-1 tracking-wider uppercase">
-                Internal System
+                Field Scheduler
               </span>
             </div>
           </Link>
