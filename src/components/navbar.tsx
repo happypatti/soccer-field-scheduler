@@ -19,6 +19,7 @@ import { useRouter, usePathname } from "next/navigation";
 interface Notification {
   id: string;
   type: string;
+  title?: string;
   message: string;
   isRead: boolean;
   createdAt: string;
@@ -156,8 +157,11 @@ export default function Navbar() {
                     )}
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
-                    <div className="p-2 border-b">
+                    <div className="p-2 border-b flex items-center justify-between">
                       <p className="font-semibold">Notifications</p>
+                      <Link href="/notifications" className="text-xs text-yellow-600 hover:underline" onClick={() => setNotifOpen(false)}>
+                        View all
+                      </Link>
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
@@ -165,13 +169,14 @@ export default function Navbar() {
                           No notifications
                         </div>
                       ) : (
-                        notifications.map((notif) => (
+                        notifications.slice(0, 5).map((notif) => (
                           <div
                             key={notif.id}
                             className={`p-3 border-b hover:bg-muted cursor-pointer ${!notif.isRead ? "bg-yellow-50" : ""}`}
                             onClick={() => markAsRead(notif.id)}
                           >
-                            <p className="text-sm">{notif.message}</p>
+                            <p className="text-sm font-medium">{notif.title || "Notification"}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
                             <p className="text-xs text-muted-foreground mt-1">
                               {new Date(notif.createdAt).toLocaleDateString()}
                             </p>
@@ -179,6 +184,15 @@ export default function Navbar() {
                         ))
                       )}
                     </div>
+                    {notifications.length > 0 && (
+                      <div className="p-2 border-t">
+                        <Link href="/notifications" onClick={() => setNotifOpen(false)}>
+                          <button className="w-full text-center text-sm text-yellow-600 hover:text-yellow-700 font-medium py-1">
+                            Open Inbox →
+                          </button>
+                        </Link>
+                      </div>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
 
