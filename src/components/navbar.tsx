@@ -125,6 +125,25 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {/* Inbox link - only show when logged in */}
+            {session && (
+              <Link
+                href="/notifications"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                  isActivePath("/notifications")
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <Inbox className="h-4 w-4" />
+                Inbox
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
             {authLinks.map((link) => (
               <Link
                 key={link.href}
