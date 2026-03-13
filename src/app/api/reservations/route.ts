@@ -1,9 +1,33 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { reservations } from "@/lib/db/schema";
+import { reservations, users, zones, fields } from "@/lib/db/schema";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
+
+// Check if user tier can access field based on allowedTiers
+// allowedTiers can be: 'gold', 'gold_silver', 'silver', 'silver_bronze', 'bronze', 'all'
+function canUserAccessField(userTier: string, allowedTiers: string): boolean {
+  if (allowedTiers === "all") return true;
+  if (allowedTiers === "gold") return userTier === "gold";
+  if (allowedTiers === "gold_silver") return userTier === "gold" || userTier === "silver";
+  if (allowedTiers === "silver") return userTier === "silver";
+  if (allowedTiers === "silver_bronze") return userTier === "silver" || userTier === "bronze";
+  if (allowedTiers === "bronze") return userTier === "bronze";
+  return true; // Default to allow
+}
+
+function getAllowedTiersDescription(allowedTiers: string): string {
+  const descriptions: Record<string, string> = {
+    gold: "Gold coaches only",
+    gold_silver: "Gold & Silver coaches only",
+    silver: "Silver coaches only",
+    silver_bronze: "Silver & Bronze coaches only",
+    bronze: "Bronze coaches only",
+    all: "All coaches",
+  };
+  return descriptions[allowedTiers] || "All coaches";
+}
 
 export async function GET(request: Request) {
   try {
@@ -107,6 +131,38 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Zone ID, date, start time, and end time are required" },
         { status: 400 }
+      );
+    }
+
+    // Get user's tier
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Get zone and field info to check tier
+    const zone = await db.query.zones.findFirst({
+      where: eq(zones.id, zoneId),
+      with: {
+        field: true,
+      },
+    });
+
+    if (!zone) {
+      return NextResponse.json({ error: "Zone not found" }, { status: 404 });
+    }
+
+    // Check tier-based access
+    const allowedTiers = zone.field.allowedTiers || "all";
+    const userTier = user.tier || "bronze";
+    
+    if (!canUserAccessField(userTier, allowedTiers)) {
+      return NextResponse.json(
+        { error: `This field is restricted to: ${getAllowedTiersDescription(allowedTiers)}. Your tier: ${userTier.charAt(0).toUpperCase() + userTier.slice(1)}` },
+        { status: 403 }
       );
     }
 

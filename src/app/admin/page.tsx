@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, Check, X, Plus, MapPin, Building, Layers, User, Edit } from "lucide-react";
+import { Calendar, Clock, Check, X, Plus, MapPin, Building, Layers, User, Edit, Users, Crown, Medal, Award } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -281,6 +281,14 @@ export default function AdminPage() {
             Manage reservations, cities, fields, and zones
           </p>
         </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => router.push("/admin/users")}>
+          <Users className="h-4 w-4 mr-2" />
+          Manage Members
+        </Button>
       </div>
 
       {/* Stats Cards */}

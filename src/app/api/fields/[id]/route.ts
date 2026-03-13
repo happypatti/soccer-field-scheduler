@@ -46,18 +46,21 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, description, imageUrl, isActive } = body;
+    const { name, address, description, imageUrl, allowedTiers, isActive } = body;
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name;
+    if (address !== undefined) updateData.address = address;
+    if (description !== undefined) updateData.description = description;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (allowedTiers !== undefined && ["gold", "gold_silver", "silver", "silver_bronze", "bronze", "all"].includes(allowedTiers)) {
+      updateData.allowedTiers = allowedTiers;
+    }
+    if (isActive !== undefined) updateData.isActive = isActive;
 
     const [updatedField] = await db
       .update(fields)
-      .set({
-        name,
-        address,
-        description,
-        imageUrl,
-        isActive,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(fields.id, id))
       .returning();
 

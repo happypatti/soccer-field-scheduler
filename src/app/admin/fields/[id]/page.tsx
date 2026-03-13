@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Upload, Save, Plus, Trash2, Move } from "lucide-react";
+import { ArrowLeft, Upload, Save, Plus, Trash2, Move, Crown, Medal, Award } from "lucide-react";
 import { toast } from "sonner";
 
 interface Zone {
@@ -27,8 +27,18 @@ interface Field {
   name: string;
   address: string | null;
   imageUrl: string | null;
+  allowedTiers: string;
   zones: Zone[];
 }
+
+const tierOptions = [
+  { value: "all", label: "All Coaches", description: "Gold, Silver & Bronze", color: "border-green-400 bg-green-50" },
+  { value: "gold", label: "Gold Only", description: "Gold coaches only", color: "border-yellow-400 bg-yellow-50" },
+  { value: "gold_silver", label: "Gold & Silver", description: "Gold + Silver coaches", color: "border-yellow-400 bg-gradient-to-r from-yellow-50 to-gray-50" },
+  { value: "silver", label: "Silver Only", description: "Silver coaches only", color: "border-gray-400 bg-gray-50" },
+  { value: "silver_bronze", label: "Silver & Bronze", description: "Silver + Bronze coaches", color: "border-gray-400 bg-gradient-to-r from-gray-50 to-amber-50" },
+  { value: "bronze", label: "Bronze Only", description: "Bronze coaches only", color: "border-amber-400 bg-amber-50" },
+];
 
 export default function AdminFieldEditPage() {
   const { data: session, status } = useSession();
@@ -53,6 +63,9 @@ export default function AdminFieldEditPage() {
   const [newZoneName, setNewZoneName] = useState("");
   const [isAddingZone, setIsAddingZone] = useState(false);
   const [isDeletingZone, setIsDeletingZone] = useState<string | null>(null);
+  
+  // Field tier
+  const [selectedTier, setSelectedTier] = useState("bronze");
 
   useEffect(() => {
     if (status === "loading") return;
@@ -83,6 +96,7 @@ export default function AdminFieldEditPage() {
         };
       });
       setZoneEdits(edits);
+      setSelectedTier(data.allowedTiers || "all");
       
       if (data.imageUrl) {
         setImagePreview(data.imageUrl);
@@ -132,11 +146,11 @@ export default function AdminFieldEditPage() {
         imageUrl = await handleImageUpload();
       }
       
-      // Update field with new image
+      // Update field with new image and allowedTiers
       const fieldResponse = await fetch(`/api/fields/${field.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl }),
+        body: JSON.stringify({ imageUrl, allowedTiers: selectedTier }),
       });
       
       if (!fieldResponse.ok) {
@@ -321,6 +335,28 @@ export default function AdminFieldEditPage() {
             <CardTitle>Field Image & Zone Layout</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Field Access Tier Selection */}
+            <div className="space-y-2">
+              <Label>Who can book this field?</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {tierOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedTier(option.value)}
+                    className={`p-3 rounded-lg border-2 text-left transition-all ${
+                      selectedTier === option.value
+                        ? `${option.color} ring-2 ring-offset-1`
+                        : "border-border hover:border-gray-400"
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Image Upload */}
             <div className="space-y-2">
               <Label>Field Satellite/Aerial Image</Label>

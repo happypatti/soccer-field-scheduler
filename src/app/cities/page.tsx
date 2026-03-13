@@ -25,9 +25,16 @@ export default function CitiesPage() {
       try {
         const response = await fetch("/api/cities");
         const data = await response.json();
-        setCities(data);
+        // Ensure we have an array
+        if (Array.isArray(data)) {
+          setCities(data);
+        } else {
+          console.error("Expected array, got:", data);
+          setCities([]);
+        }
       } catch (error) {
         console.error("Error fetching cities:", error);
+        setCities([]);
       } finally {
         setIsLoading(false);
       }

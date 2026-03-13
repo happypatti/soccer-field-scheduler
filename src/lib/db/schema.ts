@@ -33,6 +33,8 @@ export const fields = pgTable("fields", {
   address: text("address"),
   description: text("description"),
   imageUrl: text("image_url"),
+  // Allowed tiers: 'gold', 'gold_silver', 'silver', 'silver_bronze', 'bronze', 'all'
+  allowedTiers: varchar("allowed_tiers", { length: 50 }).notNull().default("all"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
